@@ -1,20 +1,34 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { filterCandidatesForCase } from '../lib/filterCandidates.js'
-import { rankCandidates } from '../lib/rankCandidates.js'
-import { supabaseAdmin } from '../lib/supabaseAdmin.js'
+import { createClient } from '@supabase/supabase-js'
+import { filterCandidatesForCase } from '../_shared/filterCandidates.ts'
+import { rankCandidates } from '../_shared/rankCandidates.ts'
+import { corsHeaders } from '../_shared/cors.ts'
 
 interface RecommendRequest {
   caseId: string
 }
 
-export async function recommend(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-  const body = (await request.json()) as Partial<RecommendRequest>
+function json(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
 
-  if (!body.caseId) {
-    return { status: 400, jsonBody: { error: 'caseId is required' } }
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+
+  let body: Partial<RecommendRequest>
+  try {
+    body = await req.json()
+  } catch {
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
-  const supabase = supabaseAdmin()
+  if (!body.caseId) {
+    return json({ error: 'caseId is required' }, 400)
+  }
+
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
   // Idempotent: a case activated twice (e.g. a retried request) must not
   // re-rank or duplicate rows -- if recommendations already exist, return them as-is.
@@ -25,24 +39,24 @@ export async function recommend(request: HttpRequest, context: InvocationContext
     .order('rank', { ascending: true })
 
   if (existingError) {
-    context.error('Failed to check for existing recommendations', existingError)
-    return { status: 500, jsonBody: { error: 'Failed to check for existing recommendations' } }
+    console.error('Failed to check for existing recommendations', existingError)
+    return json({ error: 'Failed to check for existing recommendations' }, 500)
   }
 
   if (existing && existing.length > 0) {
-    return { status: 200, jsonBody: { recommendations: existing } }
+    return json({ recommendations: existing }, 200)
   }
 
   const { data: caseRow, error: caseError } = await supabase.from('cases').select('*').eq('id', body.caseId).single()
   if (caseError || !caseRow) {
-    context.error('Failed to load case', caseError)
-    return { status: 404, jsonBody: { error: 'Case not found' } }
+    console.error('Failed to load case', caseError)
+    return json({ error: 'Case not found' }, 404)
   }
 
   const { data: homes, error: homesError } = await supabase.from('funeral_homes').select('*')
   if (homesError || !homes) {
-    context.error('Failed to load funeral homes', homesError)
-    return { status: 500, jsonBody: { error: 'Failed to load funeral homes' } }
+    console.error('Failed to load funeral homes', homesError)
+    return json({ error: 'Failed to load funeral homes' }, 500)
   }
 
   const candidates = filterCandidatesForCase(homes, caseRow)
@@ -50,6 +64,8 @@ export async function recommend(request: HttpRequest, context: InvocationContext
   let recommendations: Awaited<ReturnType<typeof rankCandidates>> = []
   if (candidates.length > 0) {
     try {
+      const apiKey = Deno.env.get('OPENROUTER_API_KEY')
+      if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set')
       recommendations = await rankCandidates(
         // filterCandidatesForCase only returns candidates when disposition_preference is set.
         caseRow.disposition_preference!,
@@ -61,10 +77,11 @@ export async function recommend(request: HttpRequest, context: InvocationContext
           price_burial: c.price_burial,
           rating: c.rating,
         })),
+        apiKey,
       )
     } catch (err) {
-      context.error('Ranking candidates failed', err)
-      return { status: 500, jsonBody: { error: 'Failed to rank candidates' } }
+      console.error('Ranking candidates failed', err)
+      return json({ error: 'Failed to rank candidates' }, 500)
     }
   }
 
@@ -79,8 +96,8 @@ export async function recommend(request: HttpRequest, context: InvocationContext
     )
 
     if (insertError) {
-      context.error('Failed to write recommendations', insertError)
-      return { status: 500, jsonBody: { error: 'Failed to save recommendations' } }
+      console.error('Failed to write recommendations', insertError)
+      return json({ error: 'Failed to save recommendations' }, 500)
     }
   }
 
@@ -90,18 +107,9 @@ export async function recommend(request: HttpRequest, context: InvocationContext
     .eq('id', body.caseId)
 
   if (statusError) {
-    context.error('Failed to update case status', statusError)
-    return { status: 500, jsonBody: { error: 'Failed to update case status' } }
+    console.error('Failed to update case status', statusError)
+    return json({ error: 'Failed to update case status' }, 500)
   }
 
-  return { status: 200, jsonBody: { recommendations } }
-}
-
-// anonymous, not function -- same reasoning as parse-intake: called directly
-// from the browser via Azure SWA's same-origin /api/* proxy, protected by the
-// case id being an unguessable UUID rather than a bundled function key.
-app.http('recommend', {
-  methods: ['POST'],
-  authLevel: 'anonymous',
-  handler: recommend,
+  return json({ recommendations }, 200)
 })

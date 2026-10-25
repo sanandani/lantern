@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { decedentName, type Case, type IntakeDocument } from '../lib/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { HospitalLayout } from '../components/HospitalLayout'
+import { triggerParseIntake } from '../lib/triggerParseIntake'
 
 interface InviteToken {
   id: string
@@ -22,6 +23,7 @@ export function CaseDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [resending, setResending] = useState(false)
+  const [retryingParse, setRetryingParse] = useState(false)
 
   const loadAll = useCallback(async () => {
     if (!id) return
@@ -71,6 +73,25 @@ export function CaseDetail() {
 
     await loadAll()
     setResending(false)
+  }
+
+  // Covers T7.1's "parse failure" case where the fire-and-forget call to
+  // parse-intake from NewCase.tsx never reached the server at all (network
+  // blip) -- there's no intake_documents row to show a specific error from,
+  // just nothing. Re-lists the uploaded PDF from storage (we don't persist
+  // its path anywhere else) and fires parse-intake again.
+  async function handleRetryParse() {
+    if (!id) return
+    setRetryingParse(true)
+
+    const { data: files } = await supabase.storage.from('intake-documents').list(id)
+    const file = files?.[0]
+    if (file) triggerParseIntake(id, `${id}/${file.name}`)
+
+    setTimeout(async () => {
+      await loadAll()
+      setRetryingParse(false)
+    }, 3000)
   }
 
   if (loading)
@@ -133,7 +154,14 @@ export function CaseDetail() {
 
       <div className="card">
         <h2>Parsed fields</h2>
-        {!intakeDoc && <p>PDF not parsed yet.</p>}
+        {!intakeDoc && (
+          <>
+            <p>PDF not parsed yet.</p>
+            <button type="button" className="btn btn-secondary" onClick={handleRetryParse} disabled={retryingParse}>
+              {retryingParse ? 'Checking…' : 'Re-check / retry parsing'}
+            </button>
+          </>
+        )}
         {intakeDoc && !intakeDoc.parsed_fields && <p>Parse returned no usable fields.</p>}
         {intakeDoc?.parsed_fields && (
           <table>

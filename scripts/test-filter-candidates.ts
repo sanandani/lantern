@@ -1,6 +1,11 @@
 // Standalone unit tests for filterCandidates -- no network, no Supabase.
-// Run with `npm run test:filter-candidates` from api/.
-import { filterCandidates, filterCandidatesForCase, resolveCaseCounty, type FuneralHomeCandidate } from '../src/lib/filterCandidates.js'
+// Run with `npm test` from the repo root.
+import {
+  filterCandidates,
+  filterCandidatesForCase,
+  resolveCaseCounty,
+  type FuneralHomeCandidate,
+} from '../supabase/functions/_shared/filterCandidates.ts'
 
 let failures = 0
 

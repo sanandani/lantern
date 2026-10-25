@@ -10,10 +10,12 @@ through a dedicated link.
 ## Stack
 
 React (Vite) SPA, talking to Supabase (Postgres + Auth + Storage) directly via its client
-SDK and Row-Level Security — no custom CRUD backend. Two Azure Functions (PDF parsing
-built, recommendation ranking not yet built) handle the only steps that need the
-OpenRouter API key off the client, both via `google/gemini-3.8-flash` through OpenRouter.
-Hosted on Azure Static Web Apps, auto-deployed from `main`.
+SDK and Row-Level Security — no custom CRUD backend. Two Supabase Edge Functions
+(`supabase/functions/parse-intake`, `supabase/functions/recommend`) handle the only steps
+that need the OpenRouter API key off the client, both via `google/gemini-3.8-flash`
+through OpenRouter. The static frontend is hosted on Azure Static Web Apps, auto-deployed
+from `main`; backend compute runs on Supabase, deployed separately (see "Supabase Edge
+Functions" below).
 
 ## Prerequisites
 
@@ -48,11 +50,14 @@ Hosted on Azure Static Web Apps, auto-deployed from `main`.
    there).
 
    The `SUPABASE_SERVICE_ROLE_KEY` and `OPENROUTER_API_KEY` entries are the opposite —
-   **genuine secrets**, used only by the Azure Functions, never put in client code, and
-   never committed here even as a placeholder value. Get those from whoever holds them
-   (Harsh) or from the Azure Function App's own settings once it's deployed — not from
-   the Supabase dashboard, and not by asking another agent session, which won't have
-   them either. Leave both blank in `.env` for frontend-only work.
+   **genuine secrets**, used only by the Supabase Edge Functions, never put in client
+   code, and never committed here even as a placeholder value. `SUPABASE_SERVICE_ROLE_KEY`
+   in your local `.env` is only needed if you're running scripts against the service-role
+   client directly (e.g. `scripts/test-rls.ts`); the deployed Edge Functions get it
+   auto-injected and never read `.env`. Get these from whoever holds them (Harsh) or from
+   the Supabase dashboard's **Project Settings → API Keys** page — not by asking another
+   agent session, which won't have them either. Leave both blank in `.env` for
+   frontend-only work.
 
    Separately, the hosted project's Auth email now goes through a custom Resend SMTP
    relay (`supabase/config.toml`'s `[auth.email.smtp]`, applied via `supabase config
@@ -85,6 +90,8 @@ npm run build     # type-checks, then builds to build/ (not Vite's default dist/
                    # must match output_location in the Azure SWA workflow)
 npm run lint       # oxlint
 npm run preview    # serve the production build locally
+npm test           # candidate-filter unit tests, no network/Supabase needed
+npm run test:rls   # RLS policy tests against the real hosted project
 ```
 
 ## Deployment
@@ -100,39 +107,47 @@ deployed site loads but renders blank, check that those two variables are still 
 still correct; a missing/stale value throws in `src/lib/supabase.ts` before anything
 renders, with the deploy itself still reporting success.
 
-### Azure Functions (`api/`)
+### Supabase Edge Functions (`supabase/functions/`)
 
-The workflow's `api_location: "api"` tells Azure Static Web Apps to build and deploy
-`api/` as managed Functions alongside the static site — no separate Function App
-resource needed. Those functions need their own secrets, which **only exist in Azure**
-(never in this repo or in GitHub), set once via the Azure Portal → your Static Web App →
-*Settings → Environment variables* (or `az staticwebapp appsettings set`):
+Backend compute (PDF parsing, recommendation ranking) runs as two Supabase Edge Functions,
+not Azure Functions — the only thing Azure Static Web Apps hosts is the static frontend
+(no `api_location` in the workflow). Shared logic lives in `supabase/functions/_shared/`;
+`parse-intake/index.ts` and `recommend/index.ts` are the thin `Deno.serve` HTTP handlers.
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `OPENROUTER_API_KEY`
+Deploy (from a dev machine, not CI — there's no GitHub Actions wiring for this yet):
+```
+npx supabase functions deploy parse-intake
+npx supabase functions deploy recommend
+```
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` need no setup — every Edge Function gets
+them auto-injected into its environment by Supabase. `OPENROUTER_API_KEY` is the one
+secret that does need setting, once, as a *Supabase* secret (not a `.env` var, and not an
+Azure app setting):
+```
+npx supabase secrets set OPENROUTER_API_KEY=<value>
+```
+Without it, both functions deploy fine but throw on the OpenRouter call specifically (see
+`supabase/functions/_shared/parsePdfToCase.ts`/`rankCandidates.ts`).
 
-Without these set, `parse-intake` and `recommend` will deploy but every invocation will
-throw (`supabaseAdmin()`/`parsePdfToCaseFields()` both throw immediately on a missing env
-var — see `api/src/lib/supabaseAdmin.ts` and `api/src/lib/parsePdfToCase.ts`).
-
-Both functions use `authLevel: 'anonymous'` and are called directly from the browser via
-Azure SWA's same-origin `/api/*` proxy for managed Functions (`src/lib/triggerParseIntake.ts`,
-`src/lib/triggerRecommend.ts`) — not `authLevel: 'function'`, which would require bundling
-a function key into client JS and leaking it. The security boundary is the same one
-`invite_tokens` already relies on: case ids are unguessable UUIDs, not enumerable, and
-there's no separate authz check beyond that. In local dev (`npm run dev`, no Functions
-runtime), these calls just 404 and get swallowed — fine, since there's nothing to parse
-or recommend against without a real upload/activation anyway. They only actually run
-against the deployed site once the three app settings above are set.
+Both functions default to `verify_jwt = true` (see `supabase/config.toml`) — every
+caller already carries a Supabase JWT (hospital session, family session, or the anonymous
+session self-serve families get when they skip email), so `supabase.functions.invoke(...)`
+(`src/lib/triggerParseIntake.ts`, `src/lib/triggerRecommend.ts`) satisfies it automatically.
+The actual authz boundary is still the same one `invite_tokens` already relies on: case
+ids are unguessable UUIDs, not enumerable. Unlike the old Azure same-origin `/api/*` proxy,
+this works identically in local dev and deployed — `npm run dev` + a real Supabase project
+is enough, no local Functions runtime needed (though `npx supabase functions serve` works
+too, if you want to iterate on a function without redeploying each time).
 
 ## Project layout
 
 ```
 src/lib/supabase.ts         Supabase client (reads VITE_SUPABASE_URL / _PUBLISHABLE_KEY)
 supabase/migrations/        Schema + RLS, applied via `supabase db push`
+supabase/functions/         Edge Functions (backend compute) — parse-intake, recommend
 docs/spec.md                Product spec — source of truth for the data model and flows
 docs/milestone-1-tasks.md   Phased task plan with acceptance criteria
+docs/demo-runbook.md        Step-by-step walkthrough for the milestone demo
 fixtures/sample-pdfs/       Sample hospital/death-certificate PDFs for parser testing
 Context/                    Reference images the sample PDFs were generated from
 ```

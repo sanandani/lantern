@@ -34,8 +34,11 @@ jobs:
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "/" # App source code path
-          api_location: "api" # Api source code path - optional
           output_location: "build" # Built app content directory - optional
+          # No api_location: backend compute (PDF parsing, recommendation
+          # ranking) moved to Supabase Edge Functions (supabase/functions/),
+          # deployed separately via `npx supabase functions deploy`. This
+          # workflow now only builds/deploys the static frontend.
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:

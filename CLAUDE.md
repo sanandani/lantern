@@ -34,8 +34,9 @@ npm run lint        # oxlint
 npm run preview     # serve the production build locally
 ```
 
-No test script exists yet — add one when the first tests land (candidate filter unit tests
-in Phase 5, RLS tests from T0.3 are still outstanding).
+`npm test` runs the candidate-filter unit tests (`scripts/test-filter-candidates.ts`, no
+network/Supabase needed). `npm run test:rls` runs the RLS policy tests
+(`scripts/test-rls.ts`) against the real hosted project.
 
 Local dev needs Supabase env vars (`.env`, copy from `.env.example`): `VITE_SUPABASE_URL`,
 `VITE_SUPABASE_PUBLISHABLE_KEY`. These are **not secrets** (the publishable key is meant
@@ -47,9 +48,12 @@ ask another agent session for them or wait on a human to paste them; read README
 `.env` and README.md's Setup section so the next session doesn't hit the same wall.
 
 `SUPABASE_SERVICE_ROLE_KEY` and `OPENROUTER_API_KEY` are the opposite: genuine secrets,
-Azure Functions-only, never in client code, never committed anywhere (not even in this
-file). If you need one and don't have it, ask Harsh directly — not another agent session,
-which won't have it either — rather than guessing or stubbing a value.
+Supabase Edge Function-only, never in client code, never committed anywhere (not even in
+this file). If you need one and don't have it, ask Harsh directly — not another agent
+session, which won't have it either — rather than guessing or stubbing a value. Note that
+setting a Supabase project secret (`npx supabase secrets set ...`) is itself a write this
+environment's permission classifier blocks regardless of who's asking — hand the exact
+command to Harsh to run rather than retrying it.
 
 `RESEND_API_KEY` is also a genuine secret, but used differently: it's only needed
 transiently, as a local env var, to run `npx supabase config push` (which applies
@@ -64,34 +68,50 @@ creating a new Resend account.
 Apply schema changes with `npx supabase db push` after linking the project
 (`npx supabase link --project-ref sfsycncjxglfiqidhvtf`).
 
-Deploy is automatic: every push to `main` builds and deploys to Azure Static Web Apps via
-the GitHub workflow. The build step needs the two `VITE_*` vars as GitHub repo variables
-(Vite inlines them at build time) — if the deployed site loads blank, that's almost always
-a missing/stale repo variable (throws in `src/lib/supabase.ts` before anything renders,
-while the deploy itself still reports success).
+Frontend deploy is automatic: every push to `main` builds and deploys the static site to
+Azure Static Web Apps via the GitHub workflow. The build step needs the two `VITE_*` vars
+as GitHub repo variables (Vite inlines them at build time) — if the deployed site loads
+blank, that's almost always a missing/stale repo variable (throws in `src/lib/supabase.ts`
+before anything renders, while the deploy itself still reports success).
+
+Backend compute deploy is **not** part of that workflow and is **not** automatic: after
+editing anything under `supabase/functions/`, redeploy manually with
+`npx supabase functions deploy parse-intake` / `recommend` (or both). There's no CI wiring
+for this yet — fine at this scale, revisit if that becomes a problem.
 
 ## Architecture
 
 **No custom backend.** The React SPA talks to Supabase (Postgres + Auth + Storage) directly
 via `@supabase/supabase-js` (`src/lib/supabase.ts`), gated entirely by Postgres Row-Level
 Security — there is no CRUD API layer to add routes to. The only server-side code is two
-Azure Functions in `api/` (self-contained project, own `package.json`/`host.json`), used
-solely because they need the OpenRouter API key off the client. Both call
+Supabase Edge Functions in `supabase/functions/` (Deno runtime; shared logic lives in
+`supabase/functions/_shared/`), used solely because they need the OpenRouter API key off
+the client. (Frontend hosting is still Azure Static Web Apps — only this backend-compute
+piece runs on Supabase; see "Commands" above for the separate deploy step.) Both call
 `google/gemini-3.8-flash` via OpenRouter's OpenAI-compatible `/chat/completions` endpoint
 over plain `fetch` (no SDK — OpenRouter's own documented pattern; see
-`api/src/lib/parsePdfToCase.ts`), using `response_format: json_schema` built from a Zod
-schema via `z.toJSONSchema()` for structured output:
-- `parse-intake` (`api/src/functions/parseIntake.ts`, logic in `parsePdfToCase.ts`) — one
-  call per PDF upload, extracts structured Case fields with per-field confidence, writes
-  `intake_documents.parsed_fields`. The Zod schema only has keys for fields spec.md's
-  parse-targets list actually maps to `cases` columns — cause of death/manner/pregnancy/
-  SSN/physician aren't in the schema, so structured outputs make it impossible for the
-  model to return them, not just prompted-against.
-- `recommend` — not yet built (T5.2) — one call per Case, ranks filtered `funeral_homes`
+`supabase/functions/_shared/parsePdfToCase.ts`), using `response_format: json_schema` built
+from a Zod schema via `z.toJSONSchema()` for structured output:
+- `parse-intake` (`supabase/functions/parse-intake/index.ts`, logic in
+  `_shared/parsePdfToCase.ts`) — one call per PDF upload, extracts structured Case fields
+  with per-field confidence, writes `intake_documents.parsed_fields`. The Zod schema only
+  has keys for fields spec.md's parse-targets list actually maps to `cases` columns — cause
+  of death/manner/pregnancy/SSN/physician aren't in the schema, so structured outputs make
+  it impossible for the model to return them, not just prompted-against.
+- `recommend` (`supabase/functions/recommend/index.ts`, logic in `_shared/rankCandidates.ts`
+  + `_shared/filterCandidates.ts`) — one call per Case, ranks filtered `funeral_homes`
   candidates and writes `recommendations`.
 
-Both run with the Supabase service-role key and therefore bypass RLS — this is intentional
-and is why `intake_documents`/`recommendations` have select-only client policies.
+Both run with the Supabase service-role key (auto-injected into every Edge Function's
+environment as `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, nothing to configure) and
+therefore bypass RLS — this is intentional and is why `intake_documents`/`recommendations`
+have select-only client policies. Both default to `verify_jwt = true`
+(`supabase/config.toml`'s `[functions.parse-intake]`/`[functions.recommend]`) — every
+caller already carries a Supabase JWT (hospital/family session, or the anonymous session
+self-serve families get when they skip email), so this is satisfied automatically by
+`supabase.functions.invoke(...)` (`src/lib/triggerParseIntake.ts`/`triggerRecommend.ts`);
+the actual authz boundary is still the same unguessable-case-UUID one `invite_tokens`
+relies on, not the JWT check itself.
 
 **Role model:** a single `profiles` table (not separate hospital/family tables) carries
 `role: 'hospital' | 'family'`, populated from signup metadata by the `on_auth_user_created` /

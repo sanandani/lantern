@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { z } from 'zod'
 
 // Only fields with a column on `cases` (see supabase/migrations) and that
@@ -60,10 +61,9 @@ none of those are in the schema; ignore them entirely even if printed on the doc
 If the document is not a death-related hospital record at all (e.g. an unrelated lab
 report), or is unreadable, return every field with value null and confidence 0.`
 
-export async function parsePdfToCaseFields(pdfBytes: Buffer): Promise<ParsedCaseFields> {
-  const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set')
-
+// apiKey is passed in rather than read from an env var here, so this module
+// stays runtime-agnostic (Deno edge function, Node test script, etc.).
+export async function parsePdfToCaseFields(pdfBytes: Uint8Array, apiKey: string): Promise<ParsedCaseFields> {
   const res = await fetch(OPENROUTER_URL, {
     method: 'POST',
     headers: {
@@ -83,7 +83,7 @@ export async function parsePdfToCaseFields(pdfBytes: Buffer): Promise<ParsedCase
               type: 'file',
               file: {
                 filename: 'intake.pdf',
-                file_data: `data:application/pdf;base64,${pdfBytes.toString('base64')}`,
+                file_data: `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`,
               },
             },
           ],

@@ -372,16 +372,30 @@ function ConfirmationScreen({
 
 // ---------------------------------------------------------------------------
 
+const STUCK_AFTER_POLLS = 10 // ~60s at the 6s poll interval below
+
 function WaitingForRecommendations({ caseRow, onReady }: { caseRow: Case; onReady: (c: Case) => void }) {
+  const [pollCount, setPollCount] = useState(0)
+  const [retrying, setRetrying] = useState(false)
+
   useEffect(() => {
     const interval = setInterval(async () => {
       const { data } = await supabase.from('cases').select('*').eq('id', caseRow.id).maybeSingle()
       if (data && (data as Case).status === 'recommendations_ready') {
         onReady(data as Case)
+        return
       }
+      setPollCount((n) => n + 1)
     }, 6000)
     return () => clearInterval(interval)
   }, [caseRow.id, onReady])
+
+  function handleRetry() {
+    setRetrying(true)
+    triggerRecommend(caseRow.id)
+    setPollCount(0)
+    setTimeout(() => setRetrying(false), 1000)
+  }
 
   return (
     <Layout>
@@ -392,6 +406,23 @@ function WaitingForRecommendations({ caseRow, onReady }: { caseRow: Case; onRead
           This usually takes just a minute. You can leave this page open — we'll update it as soon
           as it's ready.
         </p>
+        {pollCount >= STUCK_AFTER_POLLS && (
+          <div className="banner banner-error" role="alert" style={{ marginTop: '1.5rem', textAlign: 'left' }}>
+            <p style={{ margin: 0 }}>
+              This is taking longer than expected. You can try again, or reach out and we'll help you
+              directly.
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ marginTop: '0.75rem' }}
+              onClick={handleRetry}
+              disabled={retrying}
+            >
+              {retrying ? 'Retrying…' : 'Try again'}
+            </button>
+          </div>
+        )}
       </div>
     </Layout>
   )
