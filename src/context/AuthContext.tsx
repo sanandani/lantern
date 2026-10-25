@@ -20,9 +20,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionResolved, setSessionResolved] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setSessionResolved(true)
+    })
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
@@ -32,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (!sessionResolved) return
     if (!session) {
       setProfile(null)
       setLoading(false)
@@ -48,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(data as Profile | null)
         setLoading(false)
       })
-  }, [session])
+  }, [session, sessionResolved])
 
   return <AuthContext.Provider value={{ session, profile, loading }}>{children}</AuthContext.Provider>
 }
