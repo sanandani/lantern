@@ -1,18 +1,46 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { RecommendationCard } from '../components/RecommendationCard'
 import { DEMO_CASE, DEMO_RECOMMENDATIONS } from '../lib/demoData'
+import type { Recommendation } from '../lib/types'
 
 const DISPOSITION_LABEL = { burial: 'Burial', cremation: 'Cremation', unsure: "Not sure yet" }
 
 const STEPS = [
   'A hospital uploads the intake paperwork, and we pre-fill what we can.',
   'The family confirms the details on a short review screen.',
-  'The family answers six quick questions about their loved one and their needs.',
+  'The family answers five quick questions about their loved one and their needs.',
   'We match them with funeral homes nearby and explain why each one fits.',
 ]
 
+const TIME_SLOTS = ['9:00 AM', '10:30 AM', '1:00 PM', '2:30 PM', '4:00 PM']
+
+interface DemoBooking {
+  homeName: string
+  date: string
+  time: string
+}
+
 export function Demo() {
+  const [selected, setSelected] = useState<Recommendation | null>(null)
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
+  const [booking, setBooking] = useState<DemoBooking | null>(null)
+
+  function chooseHome(rec: Recommendation) {
+    setSelected(rec)
+    setBooking(null)
+    setDate('')
+    setTime('')
+  }
+
+  function confirmBooking(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selected || !date || !time) return
+    setBooking({ homeName: selected.funeral_homes.name, date, time })
+  }
+
   return (
     <Layout wide>
       <p className="eyebrow">Demo</p>
@@ -58,8 +86,67 @@ export function Demo() {
       <h2 style={{ marginTop: '2rem' }}>Recommended funeral homes</h2>
       <p className="lede">Ranked for this family based on location, services, and rating.</p>
       {DEMO_RECOMMENDATIONS.map((r) => (
-        <RecommendationCard key={r.id} rec={r} />
+        <RecommendationCard
+          key={r.id}
+          rec={r}
+          action={
+            <button
+              type="button"
+              className={`btn ${selected?.id === r.id ? 'btn-secondary' : 'btn-primary'}`}
+              onClick={() => chooseHome(r)}
+            >
+              {selected?.id === r.id ? 'Booking this home' : 'Book a demo visit'}
+            </button>
+          }
+        />
       ))}
+
+      {selected && !booking && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <h2>Book a visit with {selected.funeral_homes.name}</h2>
+          <p>Pick a time for {DEMO_CASE.contactName} to meet the home. This is a demo, so nothing is sent.</p>
+          <form onSubmit={confirmBooking}>
+            <div className="field-row">
+              <div className="field">
+                <label htmlFor="demo-date">Date</label>
+                <input
+                  id="demo-date"
+                  type="date"
+                  min={new Date().toISOString().slice(0, 10)}
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="demo-time">Time</label>
+                <select id="demo-time" value={time} onChange={(e) => setTime(e.target.value)}>
+                  <option value="">Select a time…</option>
+                  {TIME_SLOTS.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="btn-row">
+              <button type="submit" className="btn btn-primary" disabled={!date || !time}>
+                Confirm demo booking
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {booking && (
+        <div className="banner banner-info" role="status" style={{ marginTop: '1.5rem' }}>
+          <strong>Demo booking confirmed.</strong> {DEMO_CASE.contactName} is booked with {booking.homeName} on{' '}
+          {booking.date} at {booking.time}. Nothing was sent to the funeral home.{' '}
+          <button type="button" className="btn btn-secondary" onClick={() => setSelected(null)}>
+            Done
+          </button>
+        </div>
+      )}
 
       <div className="btn-row">
         <Link to="/start" className="btn btn-primary">

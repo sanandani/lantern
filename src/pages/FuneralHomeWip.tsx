@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout'
 
 export function FuneralHomeWip() {
   return (
-    <Layout>
+    <Layout variant="funeral">
       <p className="eyebrow">Funeral home portal</p>
       <h1>Coming soon</h1>
       <p className="lede">

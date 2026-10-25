@@ -177,6 +177,23 @@ p {
   color: var(--text);
 }
 
+/* Funeral home portal: its own color so it reads as a separate product from Home
+   (cream) and the hospital portal (green). */
+.site-header-funeral {
+  background: #4b2e5a;
+  border-bottom-color: #3a2245;
+}
+
+.site-header-funeral .wordmark,
+.site-header-funeral nav a {
+  color: #f4eefa;
+}
+
+.site-header-funeral nav a:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
 .site-footer {
   margin-top: auto;
   padding: 1.5rem;

@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
 import type { Recommendation } from '../lib/types'
 
-export function RecommendationCard({ rec }: { rec: Recommendation }) {
+export function RecommendationCard({ rec, action }: { rec: Recommendation; action?: ReactNode }) {
   return (
     <div className="home-card">
       <div className="home-card-top">
@@ -17,6 +18,7 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
         {rec.funeral_homes.phone && <span>{rec.funeral_homes.phone}</span>}
       </div>
       <p className="home-card-rationale">{rec.rationale}</p>
+      {action && <div className="btn-row">{action}</div>}
     </div>
   )
 }
