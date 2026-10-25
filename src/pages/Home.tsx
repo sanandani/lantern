@@ -15,9 +15,14 @@ export function Home() {
       <div className="card" style={{ marginTop: '2rem' }}>
         <h2>Get started</h2>
         <p>It takes about three minutes. You can stop and come back any time.</p>
-        <Link to="/start" className="btn btn-primary">
-          Find a funeral home
-        </Link>
+        <div className="btn-row">
+          <Link to="/start" className="btn btn-primary">
+            Find a funeral home
+          </Link>
+          <Link to="/demo" className="btn btn-secondary">
+            Try the demo
+          </Link>
+        </div>
       </div>
 
       <p style={{ marginTop: '2rem', fontSize: '0.9rem' }}>

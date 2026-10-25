@@ -57,7 +57,7 @@ export function CaseDetail() {
   }, [loadAll])
 
   async function handleResend() {
-    if (!id || !caseRow) return
+    if (!id || !caseRow || !caseRow.family_contact_email) return
     setResending(true)
 
     if (invite && !invite.used_at) {

@@ -12,7 +12,7 @@ export interface WizardDraft {
   disposition_preference: DispositionPreference
   family_contact_name: string
   family_contact_relationship: string
-  family_contact_email: string
+  family_contact_email: string | null
 }
 
 export function stashInviteToken(token: string) {

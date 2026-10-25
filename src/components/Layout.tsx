@@ -24,6 +24,7 @@ export function Layout({ children, wide = false }: { children: ReactNode; wide?:
         </Link>
         <nav>
           <Link to="/hospital/login">Hospital staff</Link>
+          <Link to="/funeral-home">Funeral home</Link>
         </nav>
       </header>
       <main className={`page${wide ? ' page-wide' : ''}`}>{children}</main>

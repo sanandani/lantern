@@ -20,6 +20,16 @@ export async function sendMagicLink(email: string, role: Role, redirectTo: strin
   if (error) throw error
 }
 
+/**
+ * Starts a family session with no email. Creates an anonymous Supabase user
+ * (role metadata is copied into `profiles.role` by `handle_new_user`). The
+ * session lives in this browser only; an email can be attached later.
+ */
+export async function startAnonymousFamilySession() {
+  const { error } = await supabase.auth.signInAnonymously({ options: { data: { role: 'family' } } })
+  if (error) throw error
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut()
   if (error) throw error
