@@ -714,3 +714,18 @@ th {
 .theme-enterprise table th {
   background: var(--border-soft);
 }
+
+.demo-summary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.25rem;
+  margin: 0;
+}
+
+.demo-summary dt {
+  font-weight: 600;
+}
+
+.demo-summary dd {
+  margin: 0;
+}

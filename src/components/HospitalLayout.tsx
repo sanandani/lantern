@@ -18,7 +18,7 @@ export function HospitalLayout({ children, headerRight }: { children: ReactNode;
   return (
     <div className="theme-enterprise">
       <header className="enterprise-header">
-        <Link to="/hospital/dashboard" className="wordmark">
+        <Link to="/" className="wordmark">
           <LanternMark />
           AgenticLantern
           <span className="enterprise-portal-tag">Hospital Portal</span>

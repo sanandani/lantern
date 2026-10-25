@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Layout } from '../components/Layout'
 import { Field } from '../components/Field'
+import { RecommendationCard } from '../components/RecommendationCard'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { takeInviteToken, takeWizardDraft } from '../lib/familyOnboarding'
@@ -438,22 +439,7 @@ function RecommendationsView({ caseRow }: { caseRow: Case }) {
       )}
 
       {recs?.map((r) => (
-        <div className="home-card" key={r.id}>
-          <div className="home-card-top">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span className="home-card-rank">{r.rank}</span>
-              <h3 className="home-card-name">{r.funeral_homes.name}</h3>
-            </div>
-            {r.funeral_homes.rating != null && <span>★ {r.funeral_homes.rating.toFixed(1)}</span>}
-          </div>
-          <div className="home-card-meta">
-            {r.funeral_homes.county && <span>{r.funeral_homes.county}</span>}
-            {r.funeral_homes.price_cremation != null && <span>Cremation from ${r.funeral_homes.price_cremation}</span>}
-            {r.funeral_homes.price_burial != null && <span>Burial from ${r.funeral_homes.price_burial}</span>}
-            {r.funeral_homes.phone && <span>{r.funeral_homes.phone}</span>}
-          </div>
-          <p className="home-card-rationale">{r.rationale}</p>
-        </div>
+        <RecommendationCard key={r.id} rec={r} />
       ))}
     </Layout>
   )

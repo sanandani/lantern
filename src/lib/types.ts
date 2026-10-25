@@ -36,7 +36,7 @@ export interface Case {
   residence_county: string | null
   disposition_preference: DispositionPreference | null
   family_contact_name: string | null
-  family_contact_email: string
+  family_contact_email: string | null
   family_contact_relationship: string | null
   hospital_id: string | null
   family_user_id: string | null

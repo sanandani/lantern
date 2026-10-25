@@ -8,6 +8,8 @@ import { HospitalLogin } from './pages/HospitalLogin'
 import { HospitalDashboard } from './pages/HospitalDashboard'
 import { NewCase } from './pages/NewCase'
 import { CaseDetail } from './pages/CaseDetail'
+import { Demo } from './pages/Demo'
+import { FuneralHomeWip } from './pages/FuneralHomeWip'
 
 function App() {
   return (
@@ -15,6 +17,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/start" element={<Wizard />} />
+        <Route path="/demo" element={<Demo />} />
+        <Route path="/funeral-home" element={<FuneralHomeWip />} />
         <Route path="/invite/:token" element={<InvitePage />} />
         <Route
           path="/case"

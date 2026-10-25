@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Layout } from '../components/Layout'
 import { Field } from '../components/Field'
-import { sendMagicLink } from '../lib/auth'
+import { sendMagicLink, startAnonymousFamilySession } from '../lib/auth'
 import { stashWizardDraft, type WizardDraft } from '../lib/familyOnboarding'
 import type { DispositionPreference } from '../lib/types'
 
@@ -46,7 +46,8 @@ function stepIsValid(step: number, form: FormState): boolean {
     case 4:
       return form.contactName.trim() !== '' && form.contactRelationship.trim() !== ''
     case 5:
-      return /\S+@\S+\.\S+/.test(form.contactEmail)
+      // Email is optional: blank means "continue without email" (anonymous session).
+      return form.contactEmail.trim() === '' || /\S+@\S+\.\S+/.test(form.contactEmail.trim())
     default:
       return false
   }
@@ -66,6 +67,7 @@ export function Wizard() {
     setSendStatus('sending')
     setSendError('')
     try {
+      const email = form.contactEmail.trim()
       const draft: WizardDraft = {
         legal_first_name: form.legalFirstName.trim(),
         legal_middle_name: form.legalMiddleName.trim() || null,
@@ -75,11 +77,18 @@ export function Wizard() {
         disposition_preference: form.disposition as DispositionPreference,
         family_contact_name: form.contactName.trim(),
         family_contact_relationship: form.contactRelationship.trim(),
-        family_contact_email: form.contactEmail.trim(),
+        family_contact_email: email || null,
       }
       stashWizardDraft(draft)
-      await sendMagicLink(draft.family_contact_email, 'family', `${window.location.origin}/case`)
-      setSendStatus('sent')
+      if (email) {
+        await sendMagicLink(email, 'family', `${window.location.origin}/case`)
+        setSendStatus('sent')
+      } else {
+        // Full page load (not client-side navigate) so the freshly stored session is
+        // read from storage before RequireRole on /case checks it.
+        await startAnonymousFamilySession()
+        window.location.assign('/case')
+      }
     } catch (err) {
       setSendStatus('error')
       setSendError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
@@ -244,9 +253,12 @@ export function Wizard() {
 
         {step === 5 && (
           <>
-            <h2>Last step — where should we send your recommendations?</h2>
-            <p>We'll email you a secure sign-in link. No password to remember.</p>
-            <Field label="Your email address" htmlFor="w-email">
+            <h2>Last step — want a copy sent to your email?</h2>
+            <p>
+              Optional. Add an email and we'll send you a secure link to come back to your results. Leave
+              it blank to see your recommendations right away.
+            </p>
+            <Field label="Your email address (optional)" htmlFor="w-email">
               <input
                 id="w-email"
                 type="email"
