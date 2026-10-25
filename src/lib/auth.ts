@@ -1,23 +1,32 @@
 import { supabase } from './supabase'
 
-export type Role = 'hospital' | 'family' | 'funeral_home'
+export type Role = 'hospital' | 'family'
 
 /**
- * Hospital and funeral home staff sign in with the email and password on their
- * seeded account (see scripts/seed-funeral-home-users.ts). Accounts are not
- * self-registered.
+ * Sends a magic-link email. Works for both sign-up and sign-in: if the email
+ * is new, Supabase creates the auth user with `role` in its metadata, which
+ * `handle_new_user` (see supabase/migrations) copies into `profiles.role`.
+ * For an existing user `role` is ignored, matching the trigger firing only on
+ * insert into auth.users.
  */
-export async function signInStaff(email: string, password: string) {
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+export async function sendMagicLink(email: string, role: Role, redirectTo: string = window.location.origin) {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: redirectTo,
+      data: { role },
+    },
+  })
   if (error) throw error
 }
 
 /**
- * Starts a family session with no email. Creates an anonymous Supabase user;
- * handle_new_user gives it the family role. The session lives in this browser.
+ * Starts a family session with no email. Creates an anonymous Supabase user
+ * (role metadata is copied into `profiles.role` by `handle_new_user`). The
+ * session lives in this browser only; an email can be attached later.
  */
 export async function startAnonymousFamilySession() {
-  const { error } = await supabase.auth.signInAnonymously()
+  const { error } = await supabase.auth.signInAnonymously({ options: { data: { role: 'family' } } })
   if (error) throw error
 }
 

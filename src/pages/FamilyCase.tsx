@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Layout } from '../components/Layout'
 import { Field } from '../components/Field'
-import { FamilyProgress } from '../components/FamilyProgress'
-import { FamilyShortlist } from '../components/FamilyShortlist'
+import { RecommendationCard } from '../components/RecommendationCard'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import type { Selection } from '../lib/m2'
 import { takeInviteToken, takeWizardDraft } from '../lib/familyOnboarding'
 import { triggerRecommend } from '../lib/triggerRecommend'
 import { decedentName, type Case, type DispositionPreference, type IntakeDocument, type Recommendation } from '../lib/types'
@@ -130,7 +128,7 @@ export function FamilyCase() {
     return <WaitingForRecommendations caseRow={caseRow} onReady={setCaseRow} />
   }
 
-  return <FamilyHome caseRow={caseRow} />
+  return <RecommendationsView caseRow={caseRow} />
 }
 
 // ---------------------------------------------------------------------------
@@ -438,63 +436,7 @@ function WaitingForRecommendations({ caseRow, onReady }: { caseRow: Case; onRead
 
 // ---------------------------------------------------------------------------
 
-// Shows the shortlist until a funeral home is chosen, then the progress tracker.
-function FamilyHome({ caseRow }: { caseRow: Case }) {
-  const [selection, setSelection] = useState<Selection | null | undefined>(undefined)
-  const [choosing, setChoosing] = useState(false)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    supabase
-      .from('selections')
-      .select('*, funeral_homes(*)')
-      .eq('case_id', caseRow.id)
-      .eq('status', 'active')
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) setError(error.message)
-        else setSelection(data as Selection | null)
-      })
-  }, [caseRow.id])
-
-  if (error) {
-    return (
-      <Layout>
-        <div className="banner banner-error" role="alert">
-          {error}
-        </div>
-      </Layout>
-    )
-  }
-
-  if (selection === undefined) {
-    return (
-      <Layout>
-        <p className="center-note">Loading…</p>
-      </Layout>
-    )
-  }
-
-  if (selection && !choosing) {
-    return (
-      <Layout wide>
-        <FamilyProgress selection={selection} caseId={caseRow.id} onChangeChoice={() => setChoosing(true)} />
-      </Layout>
-    )
-  }
-
-  return (
-    <RecommendationsView
-      caseRow={caseRow}
-      onSelected={(s) => {
-        setSelection(s)
-        setChoosing(false)
-      }}
-    />
-  )
-}
-
-function RecommendationsView({ caseRow, onSelected }: { caseRow: Case; onSelected: (s: Selection) => void }) {
+function RecommendationsView({ caseRow }: { caseRow: Case }) {
   const [recs, setRecs] = useState<Recommendation[] | null>(null)
   const [error, setError] = useState('')
 
@@ -533,7 +475,9 @@ function RecommendationsView({ caseRow, onSelected }: { caseRow: Case; onSelecte
         </div>
       )}
 
-      {recs && recs.length > 0 && <FamilyShortlist caseRow={caseRow} recs={recs} onSelected={onSelected} />}
+      {recs?.map((r) => (
+        <RecommendationCard key={r.id} rec={r} />
+      ))}
     </Layout>
   )
 }

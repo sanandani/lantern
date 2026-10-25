@@ -243,7 +243,6 @@ Source forms: the hospital's medical certification of cause of death (`fixtures/
 | Certifying physician name/license (MED) | Hospital PDF | Never extracted |
 
 Notes:
-- M2 fields are optional and nice-to-have, not required. Only fields the funeral home worksheet strictly needs should be mandatory in M2; the rest can stay blank and be filled in later.
 - The hospital form and the worksheet both use the decedent's full legal name, so the
   M1 name field must hold first/middle/last separately, not one free-text string.
 - A funeral home is not chosen in M1, so the worksheet's funeral-facility and disposition
@@ -293,8 +292,3 @@ Notes:
 - **Funeral home dataset:** sourced from an existing, pre-compiled list covering all
   licensed funeral homes in Washington State, including pricing and location data — not
   hand-curated for the demo and not scraped live.
-- **Email login removed (M2):** no magic links anywhere. Family users sign in anonymously; the
-  invite link is the credential, and redeeming it links the case. Consequence: the invite is
-  no longer pinned to the contact email, so anyone holding the link can claim the case before
-  the family does. Hospital and funeral home staff use seeded email and password accounts
-  (`scripts/seed-funeral-home-users.ts`). The signup trigger always creates `family` profiles.

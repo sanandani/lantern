@@ -1,31 +1,43 @@
 import { useState } from 'react'
-import { signInStaff } from '../lib/auth'
+import { sendMagicLink, type Role } from '../lib/auth'
 import { Field } from './Field'
 
-// Staff sign-in (hospital and funeral home). The auth context picks up the new
-// session, and the page's Navigate redirects to the dashboard.
-export function SignInForm() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [status, setStatus] = useState<'idle' | 'signing-in' | 'error'>('idle')
+export function SignInForm({
+  role,
+  redirectTo,
+  initialEmail = '',
+  lockEmail = false,
+  submitLabel = 'Send sign-in link',
+}: {
+  role: Role
+  redirectTo?: string
+  initialEmail?: string
+  lockEmail?: boolean
+  submitLabel?: string
+}) {
+  const [email, setEmail] = useState(initialEmail)
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setStatus('signing-in')
+    setStatus('sending')
     try {
-      await signInStaff(email, password)
+      await sendMagicLink(email, role, redirectTo)
+      setStatus('sent')
     } catch (err) {
       setStatus('error')
-      const raw = err instanceof Error ? err.message : ''
-      setErrorMessage(
-        raw.includes('Invalid login credentials')
-          ? "That email and password don't match an account. Check them and try again."
-          : raw.includes('Email not confirmed')
-            ? 'This account has not been activated yet. Contact your administrator.'
-            : raw || 'Something went wrong. Please try again.',
-      )
+      setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     }
+  }
+
+  if (status === 'sent') {
+    return (
+      <div className="banner banner-info" role="status">
+        We sent a link to <strong>{email}</strong>. Open it on this device to continue — no password
+        needed.
+      </div>
+    )
   }
 
   return (
@@ -35,36 +47,22 @@ export function SignInForm() {
           id="signin-email"
           type="email"
           required
-          autoComplete="username"
+          readOnly={lockEmail}
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
       </Field>
-      <Field label="Password" htmlFor="signin-password">
-        <input
-          id="signin-password"
-          type="password"
-          required
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </Field>
-      <button type="submit" className="btn btn-primary btn-block" disabled={status === 'signing-in'}>
-        {status === 'signing-in' ? (
+      <button type="submit" className="btn btn-primary btn-block" disabled={status === 'sending'}>
+        {status === 'sending' ? (
           <>
-            <span className="spinner" aria-hidden="true" /> Signing in…
+            <span className="spinner" aria-hidden="true" /> Sending…
           </>
         ) : (
-          'Sign in'
+          submitLabel
         )}
       </button>
-      {status === 'error' && (
-        <p className="error-text" role="alert">
-          {errorMessage}
-        </p>
-      )}
+      {status === 'error' && <p className="error-text" role="alert">{errorMessage}</p>}
     </form>
   )
 }
