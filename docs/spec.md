@@ -241,6 +241,7 @@ Source forms: the hospital's medical certification of cause of death (`fixtures/
 | Certifying physician name/license (MED) | Hospital PDF | Never extracted |
 
 Notes:
+- M2 fields are optional and nice-to-have, not required. Only fields the funeral home worksheet strictly needs should be mandatory in M2; the rest can stay blank and be filled in later.
 - The hospital form and the worksheet both use the decedent's full legal name, so the
   M1 name field must hold first/middle/last separately, not one free-text string.
 - A funeral home is not chosen in M1, so the worksheet's funeral-facility and disposition
