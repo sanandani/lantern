@@ -46,7 +46,7 @@ ask another agent session for them or wait on a human to paste them; read README
 **Project Settings → API Keys** (project ref `sfsycncjxglfiqidhvtf`), then update both
 `.env` and README.md's Setup section so the next session doesn't hit the same wall.
 
-`SUPABASE_SERVICE_ROLE_KEY` and `ANTHROPIC_API_KEY` are the opposite: genuine secrets,
+`SUPABASE_SERVICE_ROLE_KEY` and `OPENROUTER_API_KEY` are the opposite: genuine secrets,
 Azure Functions-only, never in client code, never committed anywhere (not even in this
 file). If you need one and don't have it, ask Harsh directly — not another agent session,
 which won't have it either — rather than guessing or stubbing a value.
@@ -65,12 +65,20 @@ while the deploy itself still reports success).
 **No custom backend.** The React SPA talks to Supabase (Postgres + Auth + Storage) directly
 via `@supabase/supabase-js` (`src/lib/supabase.ts`), gated entirely by Postgres Row-Level
 Security — there is no CRUD API layer to add routes to. The only server-side code is two
-Azure Functions (not yet built — T1.4, T5.2), used solely because they need the Anthropic
-API key off the client:
-- `parse-intake` — one Claude call per PDF upload, extracts structured Case fields with
-  per-field confidence, writes `intake_documents.parsed_fields`.
-- `recommend` — one Claude call per Case, ranks filtered `funeral_homes` candidates and
-  writes `recommendations`.
+Azure Functions in `api/` (self-contained project, own `package.json`/`host.json`), used
+solely because they need the OpenRouter API key off the client. Both call
+`google/gemini-3.8-flash` via OpenRouter's OpenAI-compatible `/chat/completions` endpoint
+over plain `fetch` (no SDK — OpenRouter's own documented pattern; see
+`api/src/lib/parsePdfToCase.ts`), using `response_format: json_schema` built from a Zod
+schema via `z.toJSONSchema()` for structured output:
+- `parse-intake` (`api/src/functions/parseIntake.ts`, logic in `parsePdfToCase.ts`) — one
+  call per PDF upload, extracts structured Case fields with per-field confidence, writes
+  `intake_documents.parsed_fields`. The Zod schema only has keys for fields spec.md's
+  parse-targets list actually maps to `cases` columns — cause of death/manner/pregnancy/
+  SSN/physician aren't in the schema, so structured outputs make it impossible for the
+  model to return them, not just prompted-against.
+- `recommend` — not yet built (T5.2) — one call per Case, ranks filtered `funeral_homes`
+  candidates and writes `recommendations`.
 
 Both run with the Supabase service-role key and therefore bypass RLS — this is intentional
 and is why `intake_documents`/`recommendations` have select-only client policies.

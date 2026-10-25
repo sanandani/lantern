@@ -1,40 +1,57 @@
-import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { supabase } from './lib/supabase'
-
-function SupabaseStatus() {
-  const [status, setStatus] = useState<'checking' | 'ok' | 'error'>('checking')
-  const [detail, setDetail] = useState('')
-
-  useEffect(() => {
-    supabase
-      .from('funeral_homes')
-      .select('*', { count: 'exact', head: true })
-      .then(({ error, count }) => {
-        if (error) {
-          setStatus('error')
-          setDetail(error.message)
-        } else {
-          setStatus('ok')
-          setDetail(`funeral_homes table reachable (${count ?? 0} rows)`)
-        }
-      })
-  }, [])
-
-  return (
-    <div style={{ fontFamily: 'sans-serif', padding: '2rem' }}>
-      <h1>AgenticLantern</h1>
-      <p>Supabase connection: {status}</p>
-      <p>{detail}</p>
-    </div>
-  )
-}
+import { RequireRole } from './components/RequireRole'
+import { Home } from './pages/Home'
+import { Wizard } from './pages/Wizard'
+import { InvitePage } from './pages/InvitePage'
+import { FamilyCase } from './pages/FamilyCase'
+import { HospitalLogin } from './pages/HospitalLogin'
+import { HospitalDashboard } from './pages/HospitalDashboard'
+import { NewCase } from './pages/NewCase'
+import { CaseDetail } from './pages/CaseDetail'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="*" element={<SupabaseStatus />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/start" element={<Wizard />} />
+        <Route path="/invite/:token" element={<InvitePage />} />
+        <Route
+          path="/case"
+          element={
+            <RequireRole role="family">
+              <FamilyCase />
+            </RequireRole>
+          }
+        />
+
+        <Route path="/hospital/login" element={<HospitalLogin />} />
+        <Route
+          path="/hospital/dashboard"
+          element={
+            <RequireRole role="hospital">
+              <HospitalDashboard />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/hospital/cases/new"
+          element={
+            <RequireRole role="hospital">
+              <NewCase />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/hospital/cases/:id"
+          element={
+            <RequireRole role="hospital">
+              <CaseDetail />
+            </RequireRole>
+          }
+        />
+
+        <Route path="*" element={<Home />} />
       </Routes>
     </BrowserRouter>
   )

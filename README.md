@@ -10,9 +10,10 @@ through a dedicated link.
 ## Stack
 
 React (Vite) SPA, talking to Supabase (Postgres + Auth + Storage) directly via its client
-SDK and Row-Level Security — no custom CRUD backend. Two Azure Functions (not yet built)
-handle the only steps that need the Anthropic API key off the client: PDF parsing and
-recommendation ranking. Hosted on Azure Static Web Apps, auto-deployed from `main`.
+SDK and Row-Level Security — no custom CRUD backend. Two Azure Functions (PDF parsing
+built, recommendation ranking not yet built) handle the only steps that need the
+OpenRouter API key off the client, both via `google/gemini-3.8-flash` through OpenRouter.
+Hosted on Azure Static Web Apps, auto-deployed from `main`.
 
 ## Prerequisites
 
@@ -46,13 +47,12 @@ recommendation ranking. Hosted on Azure Static Web Apps, auto-deployed from `mai
    this page from the old "API" settings; "anon key" is now labeled "publishable key"
    there).
 
-   The `SUPABASE_SERVICE_ROLE_KEY` and `ANTHROPIC_API_KEY` entries are the opposite —
-   **genuine secrets**, used only by the Azure Functions (not yet built), never put in
-   client code, and never committed here even as a placeholder value. Get those from
-   whoever holds them (Harsh) or from the Azure Function App's own settings once the
-   Functions exist — not from the Supabase dashboard, and not by asking another agent
-   session, which won't have them either. Leave both blank in `.env` for frontend-only
-   work.
+   The `SUPABASE_SERVICE_ROLE_KEY` and `OPENROUTER_API_KEY` entries are the opposite —
+   **genuine secrets**, used only by the Azure Functions, never put in client code, and
+   never committed here even as a placeholder value. Get those from whoever holds them
+   (Harsh) or from the Azure Function App's own settings once it's deployed — not from
+   the Supabase dashboard, and not by asking another agent session, which won't have
+   them either. Leave both blank in `.env` for frontend-only work.
 
 3. **Link the Supabase project and apply migrations**
    ```
