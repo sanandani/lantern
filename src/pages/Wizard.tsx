@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Layout } from '../components/Layout'
 import { Field } from '../components/Field'
-import { sendMagicLink, startAnonymousFamilySession } from '../lib/auth'
+import { startAnonymousFamilySession } from '../lib/auth'
 import { stashWizardDraft, type WizardDraft } from '../lib/familyOnboarding'
 import type { DispositionPreference } from '../lib/types'
 
-const TOTAL_STEPS = 6
+const TOTAL_STEPS = 5
 
 const RELATIONSHIPS = ['Spouse', 'Son', 'Daughter', 'Parent', 'Sibling', 'Other family member']
 
@@ -18,7 +18,6 @@ type FormState = {
   disposition: DispositionPreference | ''
   contactName: string
   contactRelationship: string
-  contactEmail: string
 }
 
 const EMPTY_FORM: FormState = {
@@ -30,7 +29,6 @@ const EMPTY_FORM: FormState = {
   disposition: '',
   contactName: '',
   contactRelationship: '',
-  contactEmail: '',
 }
 
 function stepIsValid(step: number, form: FormState): boolean {
@@ -45,9 +43,6 @@ function stepIsValid(step: number, form: FormState): boolean {
       return form.disposition !== ''
     case 4:
       return form.contactName.trim() !== '' && form.contactRelationship.trim() !== ''
-    case 5:
-      // Email is optional: blank means "continue without email" (anonymous session).
-      return form.contactEmail.trim() === '' || /\S+@\S+\.\S+/.test(form.contactEmail.trim())
     default:
       return false
   }
@@ -56,18 +51,17 @@ function stepIsValid(step: number, form: FormState): boolean {
 export function Wizard() {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
-  const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  const [sendError, setSendError] = useState('')
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'sending' | 'error'>('idle')
+  const [submitError, setSubmitError] = useState('')
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
   async function handleFinalSubmit() {
-    setSendStatus('sending')
-    setSendError('')
+    setSubmitStatus('sending')
+    setSubmitError('')
     try {
-      const email = form.contactEmail.trim()
       const draft: WizardDraft = {
         legal_first_name: form.legalFirstName.trim(),
         legal_middle_name: form.legalMiddleName.trim() || null,
@@ -77,35 +71,17 @@ export function Wizard() {
         disposition_preference: form.disposition as DispositionPreference,
         family_contact_name: form.contactName.trim(),
         family_contact_relationship: form.contactRelationship.trim(),
-        family_contact_email: email || null,
+        family_contact_email: null,
       }
       stashWizardDraft(draft)
-      if (email) {
-        await sendMagicLink(email, 'family', `${window.location.origin}/case`)
-        setSendStatus('sent')
-      } else {
-        // Full page load (not client-side navigate) so the freshly stored session is
-        // read from storage before RequireRole on /case checks it.
-        await startAnonymousFamilySession()
-        window.location.assign('/case')
-      }
+      await startAnonymousFamilySession()
+      // Full page load (not client-side navigate) so the freshly stored session is
+      // read from storage before RequireRole on /case checks it.
+      window.location.assign('/case')
     } catch (err) {
-      setSendStatus('error')
-      setSendError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setSubmitStatus('error')
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     }
-  }
-
-  if (sendStatus === 'sent') {
-    return (
-      <Layout>
-        <h1>Check your email</h1>
-        <div className="banner banner-info" role="status">
-          We sent a link to <strong>{form.contactEmail}</strong>. Open it on this device to see your
-          recommendations — no password needed.
-        </div>
-        <p>Didn't get it? Check your spam folder, or come back here in a few minutes to try again.</p>
-      </Layout>
-    )
   }
 
   const canContinue = stepIsValid(step, form)
@@ -248,26 +224,7 @@ export function Wizard() {
                 ))}
               </select>
             </Field>
-          </>
-        )}
-
-        {step === 5 && (
-          <>
-            <h2>Last step — want a copy sent to your email?</h2>
-            <p>
-              Optional. Add an email and we'll send you a secure link to come back to your results. Leave
-              it blank to see your recommendations right away.
-            </p>
-            <Field label="Your email address (optional)" htmlFor="w-email">
-              <input
-                id="w-email"
-                type="email"
-                value={form.contactEmail}
-                onChange={(e) => update('contactEmail', e.target.value)}
-                autoFocus
-              />
-            </Field>
-            {sendStatus === 'error' && <p className="error-text" role="alert">{sendError}</p>}
+            {submitStatus === 'error' && <p className="error-text" role="alert">{submitError}</p>}
           </>
         )}
 
@@ -290,12 +247,12 @@ export function Wizard() {
             <button
               type="button"
               className="btn btn-primary"
-              disabled={!canContinue || sendStatus === 'sending'}
+              disabled={!canContinue || submitStatus === 'sending'}
               onClick={handleFinalSubmit}
             >
-              {sendStatus === 'sending' ? (
+              {submitStatus === 'sending' ? (
                 <>
-                  <span className="spinner" aria-hidden="true" /> Sending…
+                  <span className="spinner" aria-hidden="true" /> Finding funeral homes…
                 </>
               ) : (
                 'Get my recommendations'

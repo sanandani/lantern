@@ -14,10 +14,18 @@ function LanternMark() {
   )
 }
 
-export function Layout({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+export function Layout({
+  children,
+  wide = false,
+  variant,
+}: {
+  children: ReactNode
+  wide?: boolean
+  variant?: 'funeral'
+}) {
   return (
     <>
-      <header className="site-header">
+      <header className={`site-header${variant ? ` site-header-${variant}` : ''}`}>
         <Link to="/" className="wordmark">
           <LanternMark />
           AgenticLantern

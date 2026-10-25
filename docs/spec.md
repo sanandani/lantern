@@ -259,10 +259,11 @@ Notes:
 - **Funeral home selection:** M1 does not record a chosen funeral home. M2 adds a
   "selected funeral home" step after recommendations, which fills the worksheet's
   funeral-facility and disposition-place fields.
-- **Self-serve wizard length:** six questions (decedent name, date of death, zip,
-  disposition, family contact name and relationship, email). Confirmed by the product
-  owner, replacing the earlier three-question version, because the Case cannot exist
-  without the decedent and the family contact.
+- **Self-serve wizard length:** five questions (decedent name, date of death, zip,
+  disposition, family contact name and relationship). Originally six, with a required
+  email step; the product owner removed the email step so families get recommendations
+  without an email or sign-in. The Case is created under an anonymous session with no
+  contact email (`family_contact_email` is nullable for self-serve cases).
 - **Cause of death:** excluded from the Case schema — not needed for funeral home
   matching, and sensitive. If present in a hospital PDF, the parser should ignore it
   rather than extract it.
