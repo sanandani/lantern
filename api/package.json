@@ -1,0 +1,25 @@
+{
+  "name": "lantern-api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/src/functions/*.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "func start",
+    "test:parse-intake": "tsx scripts/test-parse-intake.ts",
+    "test:filter-candidates": "tsx scripts/test-filter-candidates.ts",
+    "test:rank-candidates": "tsx scripts/test-rank-candidates.ts",
+    "test": "npm run test:filter-candidates"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.9.0",
+    "@supabase/supabase-js": "^2.118.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "tsx": "^4.20.0",
+    "typescript": "~6.0.3"
+  }
+}

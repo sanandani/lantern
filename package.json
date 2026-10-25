@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "load-funeral-homes": "tsx scripts/load-funeral-homes.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
@@ -21,6 +22,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.88.0",
+    "tsx": "^4.20.0",
     "typescript": "~6.0.3",
     "vite": "^8.3.4"
   }

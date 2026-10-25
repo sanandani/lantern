@@ -150,7 +150,7 @@ a lightweight structured answer set because there's no document to parse.
 - **Backend:** no general-purpose API server. Auth and all Case/FuneralHome DB reads and
   writes go straight from the React app to Supabase via its client SDK and Row-Level
   Security — nothing custom to build there. The only server-side code is two small
-  **Azure Functions** endpoints, for the two steps that need the Anthropic API key kept
+  **Azure Functions** endpoints, for the two steps that need the OpenRouter API key kept
   off the client: PDF parsing and recommendation ranking.
 - **DB:** Supabase (Postgres) — free tier. One `role: hospital | family` claim covers
   both login types.
@@ -159,10 +159,12 @@ a lightweight structured answer set because there's no document to parse.
   custom backend). The invite token is a separate short-lived (24-hour) record stored in
   Postgres, not an auth mechanism itself — it gates which Case a new FamilyUser gets
   attached to and pins the signup to the contact email already on file.
-- **PDF parsing:** one LLM call per upload (Claude's PDF input support), run inside an
-  Azure Function, prompted to return the structured Case JSON with per-field confidence —
-  no separate OCR pipeline needed for text-based PDFs.
-- **AI agent (recommendation):** a second Azure Function, one LLM call per Case: input =
+- **PDF parsing:** one LLM call per upload via **OpenRouter** (`google/gemini-3.8-flash`),
+  run inside an Azure Function, with structured output (JSON Schema, derived from the same
+  Zod schema as the Case fields) so the model cannot return fields outside the schema —
+  no separate OCR pipeline needed for text-based PDFs (OpenRouter falls back to OCR
+  automatically for ones that need it).
+- **AI agent (recommendation):** a second Azure Function (via OpenRouter), one LLM call per Case: input =
   confirmed Case JSON + filtered (location + disposition, capped to a manageable
   candidate count) FuneralHome candidates; output = ranked list + rationale strings. No
   multi-agent orchestration needed at Milestone 1.
@@ -170,7 +172,7 @@ a lightweight structured answer set because there's no document to parse.
   homes in Washington State — name, address/county, phone, cremation/burial capability,
   pricing, and rating — checked into the repo as JSON/CSV, loaded into Supabase. Not
   hand-curated for the demo and not live GPL scraping.
-- **Secrets:** the Anthropic API key lives only in Azure Function app settings, never in
+- **Secrets:** the OpenRouter API key lives only in Azure Function app settings, never in
   client code or the Supabase client config.
 
 ## Milestone 1 — demo script (what "done" looks like)
