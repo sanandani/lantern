@@ -421,6 +421,42 @@ textarea:focus-visible {
   cursor: pointer;
 }
 
+.step-row {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.step-row:last-child {
+  border-bottom: none;
+}
+
+.tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.tab-button {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.tab-button:hover {
+  border-color: var(--primary);
+}
+
+.tab-button.is-checked {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: 600;
+}
+
 .radio-option:hover {
   border-color: var(--primary);
 }

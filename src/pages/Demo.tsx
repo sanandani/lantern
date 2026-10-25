@@ -1,156 +1,118 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
-import { RecommendationCard } from '../components/RecommendationCard'
-import { DEMO_CASE, DEMO_RECOMMENDATIONS } from '../lib/demoData'
-import type { Recommendation } from '../lib/types'
+import { FamilyPov, FuneralPov, HospitalPov } from '../components/DemoPov'
+import { DEMO_STEPS, stateAt, type Pov } from '../lib/demoFlow'
 
-const DISPOSITION_LABEL = { burial: 'Burial', cremation: 'Cremation', unsure: "Not sure yet" }
+const POV_LABEL: Record<Pov, string> = {
+  hospital: 'Hospital',
+  family: 'Family',
+  funeral: 'Funeral home',
+}
 
-const STEPS = [
-  'A hospital uploads the intake paperwork, and we pre-fill what we can.',
-  'The family confirms the details on a short review screen.',
-  'The family answers five quick questions about their loved one and their needs.',
-  'We match them with funeral homes nearby and explain why each one fits.',
-]
+const POVS: Pov[] = ['hospital', 'family', 'funeral']
 
-const TIME_SLOTS = ['9:00 AM', '10:30 AM', '1:00 PM', '2:30 PM', '4:00 PM']
-
-interface DemoBooking {
-  homeName: string
-  date: string
-  time: string
+// ?step=N opens the preview partway through (0 = start, DEMO_STEPS.length = finished),
+// so a link can point someone at a specific moment in the flow.
+function stepFromUrl(): number {
+  const raw = new URLSearchParams(window.location.search).get('step')
+  const n = raw == null ? 0 : Number(raw)
+  return Number.isInteger(n) ? Math.max(0, Math.min(DEMO_STEPS.length, n)) : 0
 }
 
 export function Demo() {
-  const [selected, setSelected] = useState<Recommendation | null>(null)
-  const [date, setDate] = useState('')
-  const [time, setTime] = useState('')
-  const [booking, setBooking] = useState<DemoBooking | null>(null)
+  const [index, setIndex] = useState(stepFromUrl)
+  // Null means "follow the current step's POV". Set when someone peeks at another role.
+  const [peek, setPeek] = useState<Pov | null>(null)
 
-  function chooseHome(rec: Recommendation) {
-    setSelected(rec)
-    setBooking(null)
-    setDate('')
-    setTime('')
-  }
+  const state = useMemo(() => stateAt(index), [index])
+  const finished = index >= DEMO_STEPS.length
+  const step = finished ? null : DEMO_STEPS[index]
+  const activePov: Pov = peek ?? step?.pov ?? 'family'
 
-  function confirmBooking(e: React.FormEvent) {
-    e.preventDefault()
-    if (!selected || !date || !time) return
-    setBooking({ homeName: selected.funeral_homes.name, date, time })
+  function go(next: number) {
+    setPeek(null)
+    setIndex(Math.max(0, Math.min(DEMO_STEPS.length, next)))
   }
 
   return (
     <Layout wide>
       <p className="eyebrow">Demo</p>
-      <h1>See how AgenticLantern works</h1>
+      <h1>See the whole flow</h1>
       <p className="lede">
-        This walkthrough uses a sample family and sample funeral homes. No email, sign-in, or typing
-        needed.
+        Walk one sample case from hospital upload to a completed cremation, from the hospital, family, and funeral home
+        points of view. Each step does what the app does, using example data only. Nothing is saved or sent.
       </p>
 
-      <div className="banner banner-info" role="status">
-        Everything on this page is example data. Nothing is saved or sent to anyone.
-      </div>
-
       <div className="card" style={{ marginTop: '1.5rem' }}>
-        <h2>How it works</h2>
-        <ol>
-          {STEPS.map((s) => (
-            <li key={s}>{s}</li>
+        <p className="progress-label">
+          {finished ? 'End of the preview' : `Step ${index + 1} of ${DEMO_STEPS.length} · ${POV_LABEL[step!.pov]}`}
+        </p>
+        <div className="progress-track" aria-hidden="true">
+          {DEMO_STEPS.map((_, i) => (
+            <div key={i} className={`progress-step${i < index ? ' is-done' : ''}`} />
           ))}
-        </ol>
-      </div>
-
-      <div className="card">
-        <h2>Sample family's answers</h2>
-        <dl className="demo-summary">
-          <dt>Loved one</dt>
-          <dd>{DEMO_CASE.decedentName}</dd>
-          <dt>Date of death</dt>
-          <dd>{DEMO_CASE.dateOfDeath}</dd>
-          <dt>Home zip code</dt>
-          <dd>
-            {DEMO_CASE.residenceZip} ({DEMO_CASE.residenceCounty} County)
-          </dd>
-          <dt>Burial or cremation</dt>
-          <dd>{DISPOSITION_LABEL[DEMO_CASE.disposition]}</dd>
-          <dt>Contact</dt>
-          <dd>
-            {DEMO_CASE.contactName} ({DEMO_CASE.contactRelationship})
-          </dd>
-        </dl>
-      </div>
-
-      <h2 style={{ marginTop: '2rem' }}>Recommended funeral homes</h2>
-      <p className="lede">Ranked for this family based on location, services, and rating.</p>
-      {DEMO_RECOMMENDATIONS.map((r) => (
-        <RecommendationCard
-          key={r.id}
-          rec={r}
-          action={
-            <button
-              type="button"
-              className={`btn ${selected?.id === r.id ? 'btn-secondary' : 'btn-primary'}`}
-              onClick={() => chooseHome(r)}
-            >
-              {selected?.id === r.id ? 'Booking this home' : 'Book a demo visit'}
-            </button>
-          }
-        />
-      ))}
-
-      {selected && !booking && (
-        <div className="card" style={{ marginTop: '1.5rem' }}>
-          <h2>Book a visit with {selected.funeral_homes.name}</h2>
-          <p>Pick a time for {DEMO_CASE.contactName} to meet the home. This is a demo, so nothing is sent.</p>
-          <form onSubmit={confirmBooking}>
-            <div className="field-row">
-              <div className="field">
-                <label htmlFor="demo-date">Date</label>
-                <input
-                  id="demo-date"
-                  type="date"
-                  min={new Date().toISOString().slice(0, 10)}
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="demo-time">Time</label>
-                <select id="demo-time" value={time} onChange={(e) => setTime(e.target.value)}>
-                  <option value="">Select a time…</option>
-                  {TIME_SLOTS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="btn-row">
-              <button type="submit" className="btn btn-primary" disabled={!date || !time}>
-                Confirm demo booking
-              </button>
-            </div>
-          </form>
         </div>
-      )}
 
-      {booking && (
-        <div className="banner banner-info" role="status" style={{ marginTop: '1.5rem' }}>
-          <strong>Demo booking confirmed.</strong> {DEMO_CASE.contactName} is booked with {booking.homeName} on{' '}
-          {booking.date} at {booking.time}. Nothing was sent to the funeral home.{' '}
-          <button type="button" className="btn btn-secondary" onClick={() => setSelected(null)}>
-            Done
+        {finished ? (
+          <>
+            <h2>Case completed</h2>
+            <p>
+              The family chose Harborview for cremation, got a custom quote, followed each step, and asked one question.
+              Use Back to revisit any step, or restart from the beginning.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2>{step!.title}</h2>
+            <p>{step!.narration}</p>
+          </>
+        )}
+
+        <div className="btn-row">
+          <button type="button" className="btn btn-quiet" onClick={() => go(index - 1)} disabled={index === 0}>
+            Back
+          </button>
+          {!finished && (
+            <button type="button" className="btn btn-primary" onClick={() => go(index + 1)}>
+              {step!.cta}
+            </button>
+          )}
+          <button type="button" className="btn btn-secondary" onClick={() => go(0)}>
+            Restart
           </button>
         </div>
-      )}
+      </div>
 
-      <div className="btn-row">
+      <div className="tab-row" role="tablist" aria-label="Point of view" style={{ marginTop: '2rem' }}>
+        {POVS.map((pov) => (
+          <button
+            key={pov}
+            type="button"
+            role="tab"
+            aria-selected={activePov === pov}
+            className={`tab-button${activePov === pov ? ' is-checked' : ''}`}
+            onClick={() => setPeek(pov)}
+          >
+            {POV_LABEL[pov]}
+            {!finished && step!.pov === pov && peek === null ? ' · now' : ''}
+          </button>
+        ))}
+      </div>
+      <p className="field-hint">The view follows the current step. Select another tab to look at it from that side.</p>
+
+      <div style={{ marginTop: '1rem' }}>
+        {activePov === 'hospital' && <HospitalPov state={state} />}
+        {activePov === 'family' && <FamilyPov state={state} />}
+        {activePov === 'funeral' && <FuneralPov state={state} />}
+      </div>
+
+      <div className="btn-row" style={{ marginTop: '2rem' }}>
+        <Link to="/demo/funeral-home" className="btn btn-secondary">
+          Funeral home click-through
+        </Link>
         <Link to="/start" className="btn btn-primary">
-          Find a funeral home for my family
+          Start a real case
         </Link>
         <Link to="/" className="btn btn-secondary">
           Back to home

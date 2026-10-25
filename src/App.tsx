@@ -9,7 +9,11 @@ import { HospitalDashboard } from './pages/HospitalDashboard'
 import { NewCase } from './pages/NewCase'
 import { CaseDetail } from './pages/CaseDetail'
 import { Demo } from './pages/Demo'
-import { FuneralHomeWip } from './pages/FuneralHomeWip'
+import { FuneralHomeLogin } from './pages/FuneralHomeLogin'
+import { FuneralHomeDashboard } from './pages/FuneralHomeDashboard'
+import { FuneralHomeRequest } from './pages/FuneralHomeRequest'
+import { FuneralHomeCase } from './pages/FuneralHomeCase'
+import { DemoFuneralHome } from './pages/DemoFuneralHome'
 
 function App() {
   return (
@@ -18,7 +22,33 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/start" element={<Wizard />} />
         <Route path="/demo" element={<Demo />} />
-        <Route path="/funeral-home" element={<FuneralHomeWip />} />
+        <Route path="/demo/funeral-home" element={<DemoFuneralHome />} />
+        <Route path="/funeral-home" element={<FuneralHomeLogin />} />
+        <Route path="/funeral-home/login" element={<FuneralHomeLogin />} />
+        <Route
+          path="/funeral-home/dashboard"
+          element={
+            <RequireRole role="funeral_home" loginPath="/funeral-home">
+              <FuneralHomeDashboard />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/funeral-home/requests/:id"
+          element={
+            <RequireRole role="funeral_home" loginPath="/funeral-home">
+              <FuneralHomeRequest />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/funeral-home/cases/:caseId"
+          element={
+            <RequireRole role="funeral_home" loginPath="/funeral-home">
+              <FuneralHomeCase />
+            </RequireRole>
+          }
+        />
         <Route path="/invite/:token" element={<InvitePage />} />
         <Route
           path="/case"
