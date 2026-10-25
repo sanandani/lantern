@@ -112,8 +112,9 @@ the actual authz boundary is still the same unguessable-case-UUID one `invite_to
 relies on, not the JWT check itself.
 
 **Role model:** a single `profiles` table (not separate hospital/family tables) carries
-`role: 'hospital' | 'family'`, populated from signup metadata by the `on_auth_user_created` /
-`handle_new_user` trigger (`supabase/migrations/20261025000000_init_schema.sql`). Role is
+`role: 'hospital' | 'family' | 'funeral_home'`. The `on_auth_user_created` / `handle_new_user`
+trigger always creates `family`. Hospital and funeral home staff are seeded by
+`scripts/seed-funeral-home-users.ts` (email + password), and family users sign in anonymously (`supabase/migrations/20261025000000_init_schema.sql`). Role is
 **not** a JWT claim — always query `profiles`, never `auth.jwt()`, to check it.
 
 **Case ownership:** `cases.hospital_id` / `cases.family_user_id` directly reference
@@ -125,7 +126,7 @@ policy — a bare one would let any authenticated user enumerate tokens. Instead
 `SECURITY DEFINER` Postgres functions do the whole flow server-side:
 - `invite_token_lookup(token)` — anon-callable, used by the invite landing page. Returns
   only validity + the contact email to lock the sign-in field to, never case contents.
-- `redeem_invite_token(token)` — authenticated-callable, called right after magic-link
+- `redeem_invite_token(token)` — authenticated-callable, called right after the family's anonymous sign-in
   sign-in completes. Validates the token, checks the signed-in email matches
   `contact_email`, sets `cases.family_user_id = auth.uid()`, marks the token used. All in
   one transaction (`for update` lock) so this is the only path that links a case to a
