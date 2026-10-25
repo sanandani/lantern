@@ -387,6 +387,25 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# parse-intake and recommend replace the Azure Functions that used to live in
+# api/ -- both need the service-role key (auto-injected as SUPABASE_URL/
+# SUPABASE_SERVICE_ROLE_KEY for every edge function, no secret to set) and
+# OPENROUTER_API_KEY (set via `npx supabase secrets set`, see README). Default
+# verify_jwt = true is kept -- every caller already carries a Supabase JWT
+# (hospital session, family session, or the anonymous session self-serve
+# families get when they skip email), so this is a strictly tighter boundary
+# than the Azure Functions' authLevel: 'anonymous', on top of the same
+# unguessable-case-UUID boundary invite_tokens already relies on.
+[functions.parse-intake]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.recommend]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+
 [analytics]
 enabled = true
 port = 54327

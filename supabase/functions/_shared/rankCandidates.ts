@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { DispositionPreference } from './filterCandidates.js'
+import type { DispositionPreference } from './filterCandidates.ts'
 
 export interface RankCandidateInput {
   id: string
@@ -16,7 +16,7 @@ export interface RankedRecommendation {
   rationale: string
 }
 
-// Cheap, modern, strong general reasoning -- same model/pattern as T1.4's parser.
+// Cheap, modern, strong general reasoning -- same model/pattern as the parser.
 const MODEL = 'google/gemini-3.8-flash'
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
@@ -31,14 +31,14 @@ area, price, rating) -- never invent a reason not supported by the data (e.g. do
 a home is "highly recommended by families" unless a rating is given). If a field is null
 for a candidate, don't mention it.`
 
+// apiKey is passed in rather than read from an env var here, so this module
+// stays runtime-agnostic (Deno edge function, Node test script, etc.).
 export async function rankCandidates(
   disposition: DispositionPreference,
   candidates: RankCandidateInput[],
+  apiKey: string,
 ): Promise<RankedRecommendation[]> {
   if (candidates.length === 0) return []
-
-  const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set')
 
   const ids = candidates.map((c) => c.id) as [string, ...string[]]
   const maxPicks = Math.min(5, candidates.length)

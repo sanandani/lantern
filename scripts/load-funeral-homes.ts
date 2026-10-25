@@ -110,7 +110,7 @@ async function main() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceRoleKey) {
     console.error(
-      "Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY. Fill these in .env (Azure Functions-only secrets, never committed) before running this script.",
+      "Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY. Fill these in .env (service-role secrets, never committed) before running this script.",
     );
     process.exit(1);
   }

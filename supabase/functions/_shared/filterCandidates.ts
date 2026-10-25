@@ -1,5 +1,5 @@
-import { WA_COUNTY_ADJACENCY } from './waCountyAdjacency.js'
-import { WA_ZIP_TO_COUNTY } from './waZipToCounty.js'
+import { WA_COUNTY_ADJACENCY } from './waCountyAdjacency.ts'
+import { WA_ZIP_TO_COUNTY } from './waZipToCounty.ts'
 
 export type DispositionPreference = 'burial' | 'cremation' | 'unsure'
 
