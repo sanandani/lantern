@@ -24,10 +24,7 @@ export function InvitePage() {
   const [lookup, setLookup] = useState<LookupState>({ status: 'loading' })
 
   useEffect(() => {
-    if (!token) {
-      setLookup({ status: 'invalid' })
-      return
-    }
+    if (!token) return
     supabase
       .rpc('invite_token_lookup', { p_token: token })
       .single<InviteTokenLookupRow>()
@@ -40,15 +37,7 @@ export function InvitePage() {
       })
   }, [token])
 
-  if (lookup.status === 'loading' || authLoading) {
-    return (
-      <Layout>
-        <p className="center-note">Checking your invite…</p>
-      </Layout>
-    )
-  }
-
-  if (lookup.status === 'invalid') {
+  if (!token || lookup.status === 'invalid') {
     return (
       <Layout>
         <h1>This link isn't active</h1>
@@ -56,6 +45,14 @@ export function InvitePage() {
           It may have already been used, or it's expired. Please contact the hospital that sent it
           and ask them to resend your invite — it only takes them a moment.
         </p>
+      </Layout>
+    )
+  }
+
+  if (lookup.status === 'loading' || authLoading) {
+    return (
+      <Layout>
+        <p className="center-note">Checking your invite…</p>
       </Layout>
     )
   }

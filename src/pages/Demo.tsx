@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { RecommendationCard } from '../components/RecommendationCard'
 import { DEMO_CASE, DEMO_RECOMMENDATIONS } from '../lib/demoData'
+import { formatDate, todayLocal } from '../lib/dates'
 import type { Recommendation } from '../lib/types'
 
 const DISPOSITION_LABEL = { burial: 'Burial', cremation: 'Cremation', unsure: "Not sure yet" }
@@ -69,7 +70,7 @@ export function Demo() {
           <dt>Loved one</dt>
           <dd>{DEMO_CASE.decedentName}</dd>
           <dt>Date of death</dt>
-          <dd>{DEMO_CASE.dateOfDeath}</dd>
+          <dd>{formatDate(DEMO_CASE.dateOfDeath)}</dd>
           <dt>Home zip code</dt>
           <dd>
             {DEMO_CASE.residenceZip} ({DEMO_CASE.residenceCounty} County)
@@ -112,7 +113,7 @@ export function Demo() {
                 <input
                   id="demo-date"
                   type="date"
-                  min={new Date().toISOString().slice(0, 10)}
+                  min={todayLocal()}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
@@ -141,8 +142,11 @@ export function Demo() {
       {booking && (
         <div className="banner banner-info" role="status" style={{ marginTop: '1.5rem' }}>
           <strong>Demo booking confirmed.</strong> {DEMO_CASE.contactName} is booked with {booking.homeName} on{' '}
-          {booking.date} at {booking.time}. Nothing was sent to the funeral home.{' '}
-          <button type="button" className="btn btn-secondary" onClick={() => setSelected(null)}>
+          {formatDate(booking.date)} at {booking.time}. Nothing was sent to the funeral home.{' '}
+          <button type="button" className="btn btn-secondary" onClick={() => {
+              setSelected(null)
+              setBooking(null)
+            }}>
             Done
           </button>
         </div>
