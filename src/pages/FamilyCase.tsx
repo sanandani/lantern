@@ -23,6 +23,8 @@ export function FamilyCase() {
       .from('cases')
       .select('*')
       .eq('family_user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
     if (error) setFetchError(error.message)
     else setCaseRow(data as Case | null)
@@ -69,17 +71,12 @@ export function FamilyCase() {
       await fetchCase()
     }
 
-    bootstrap()
+    bootstrap().catch((err) => {
+      setBootStatus('error')
+      setBootError(err instanceof Error ? err.message : 'Something went wrong. Please refresh and try again.')
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
-
-  if (bootStatus === 'working' || caseRow === undefined) {
-    return (
-      <Layout>
-        <p className="center-note">Getting things ready…</p>
-      </Layout>
-    )
-  }
 
   if (bootStatus === 'error') {
     return (
@@ -95,9 +92,18 @@ export function FamilyCase() {
   if (fetchError) {
     return (
       <Layout>
+        <h1>Something went wrong</h1>
         <div className="banner banner-error" role="alert">
-          {fetchError}
+          We couldn't load your case ({fetchError}). Please refresh the page to try again.
         </div>
+      </Layout>
+    )
+  }
+
+  if (bootStatus === 'working' || caseRow === undefined) {
+    return (
+      <Layout>
+        <p className="center-note">Getting things ready…</p>
       </Layout>
     )
   }
