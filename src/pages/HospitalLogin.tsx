@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { signOut } from '../lib/auth'
 import { useAuth } from '../context/AuthContext'
 import { HospitalLayout } from '../components/HospitalLayout'
 
@@ -42,7 +43,11 @@ export function HospitalLogin() {
             </div>
             {notStaff && (
               <p className="error-text" role="alert">
-                This browser is signed in with a family account. Use a private window to sign in as hospital staff.
+                This browser is signed in with a family account.{' '}
+                <button type="button" className="btn btn-quiet" onClick={() => signOut()}>
+                  Sign out
+                </button>{' '}
+                to continue as hospital staff.
               </p>
             )}
             {error && <p className="error-text" role="alert">{error}</p>}
