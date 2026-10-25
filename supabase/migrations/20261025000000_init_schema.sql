@@ -5,8 +5,6 @@
 -- use the service-role key and therefore bypass RLS entirely when they write
 -- parsed fields / recommendations back.
 
-create extension if not exists pgcrypto;
-
 -- ---------------------------------------------------------------------------
 -- profiles: carries the role: hospital | family claim referenced in the spec
 -- ---------------------------------------------------------------------------
@@ -132,7 +130,11 @@ create policy "intake_documents_select_own"
 -- ---------------------------------------------------------------------------
 create table invite_tokens (
   id uuid primary key default gen_random_uuid(),
-  token text not null unique default encode(gen_random_bytes(32), 'hex'),
+  -- 2x gen_random_uuid() (core PG, no extension needed) hyphens stripped,
+  -- concatenated for a 256-bit unguessable token.
+  token text not null unique default (
+    replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')
+  ),
   case_id uuid not null references cases (id) on delete cascade,
   contact_email text not null,
   expires_at timestamptz not null default (now() + interval '24 hours'),
