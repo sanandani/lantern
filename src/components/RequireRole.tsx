@@ -5,7 +5,7 @@ import type { Role } from '../lib/auth'
 
 export function RequireRole({
   role,
-  loginPath = `/${role}/login`,
+  loginPath = role === 'hospital' ? '/hospital/login' : role === 'funeral_home' ? '/funeral-home' : '/start',
   children,
 }: {
   role: Role
@@ -14,7 +14,7 @@ export function RequireRole({
 }) {
   const { session, profile, loading } = useAuth()
 
-  if (loading) return <p>Loading…</p>
+  if (loading) return <p className="center-note">Loading…</p>
   if (!session || !profile) return <Navigate to={loginPath} replace />
   if (profile.role !== role) return <Navigate to="/" replace />
 

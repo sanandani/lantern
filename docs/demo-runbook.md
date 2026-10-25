@@ -1,14 +1,13 @@
 # Milestone 1 demo runbook
 
 Covers the six-step demo script from `docs/spec.md`'s "Milestone 1 — demo script"
-section. No seeded hospital account (Harsh signs in live via the normal magic-link
-flow — see spec's note that login has no password, so there's nothing to pre-seed
-beyond the account already existing after the first sign-in).
+section. Hospital staff sign in at `/hospital/login` with an email + password (demo accounts are
+created in the Supabase dashboard; family sign-in still uses magic links).
 
 ## Before the demo
 
-- Confirm `OPENROUTER_API_KEY` is set as a Supabase secret (`npx supabase secrets set
-  OPENROUTER_API_KEY=...` — see README's "Supabase Edge Functions" section).
+- `OPENROUTER_API_KEY` is already set as a Supabase secret (verify with `npx supabase
+  secrets list`; set with `npx supabase secrets set OPENROUTER_API_KEY=...` if lost).
   `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` need no setup, they're auto-injected into
   every Edge Function. Without the OpenRouter key, steps 2 and 5 below will not produce
   real data — `parse-intake`/`recommend` deploy fine but every invocation throws
@@ -21,9 +20,8 @@ beyond the account already existing after the first sign-in).
 
 ## Live walkthrough (steps 1–5, hospital path)
 
-1. **Hospital uploads a PDF.** Go to `/hospital/login`, sign in with your email (first
-   sign-in creates the hospital account automatically via the `handle_new_user`
-   trigger — no separate account-creation step). From the dashboard, click "New
+1. **Hospital uploads a PDF.** Go to `/hospital/login`, sign in with the demo hospital
+   email and password. From the dashboard, click "New
    case," enter a family email you also control (so you can act as the family in
    step 4), and upload `fixtures/sample-pdfs/01-hospital-medical-cert-wa.pdf` — a
    clean, filled WA-style medical certificate for the fictional decedent Eleanor
@@ -37,7 +35,7 @@ beyond the account already existing after the first sign-in).
    the "Re-check / retry parsing" button rather than re-uploading.
 
 3. **Show the invite link.** Same page, "Invite link" card — the link is just
-   displayed on screen (per spec, email sending is descoped for M1). Copy it.
+   displayed on screen (per spec, email sending is descoped for M1). Use "Copy link".
 
 4. **Switch to the family view.** Open the invite link in a new private/incognito
    window (so it doesn't reuse the hospital session), sign in with the same family
@@ -56,12 +54,10 @@ beyond the account already existing after the first sign-in).
 
 ## Self-serve path (step 6, separate from the hospital flow above)
 
-6. Go to `/start` directly (no invite). Walk through the six-question wizard —
-   name, date of death, home zip, disposition, your relationship, optional email.
-   Leaving the email blank starts an anonymous session and lands straight on `/case`
-   showing the same waiting → recommendations flow as step 5, without ever creating a
-   password or receiving an email. Entering an email instead sends a magic link,
-   same as the hospital path's step 4.
+6. Go to `/start` directly (no invite). Walk through the five-step wizard —
+   name, date of death, home zip, disposition, your relationship. It starts an
+   anonymous session and lands straight on `/case` showing the same waiting →
+   recommendations flow as step 5, with no password or email.
 
 ## Fixtures reference
 

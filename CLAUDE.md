@@ -17,11 +17,9 @@ signs up through a dedicated link. Hackathon project, Milestone 1 scope.
   tracks, and reconcile it (like the "Phase 0" note at its top) when implementation diverges
   from what it originally assumed.
 
-Current state: Phase 0 (schema, RLS, Supabase client, auth context) is done. `src/App.tsx`
-is still a single-page connectivity check + generic sign-in demo — no real routes/pages
-(hospital login, invite landing, wizard, recommendations view) are built yet. Treat anything
-past Phase 0 in the task plan as not started unless you've verified otherwise by reading
-`src/`.
+Current state: all Milestone 1 flows are built (`src/pages/`: hospital password login,
+dashboard, new case, case detail; invite landing; family case; 5-step wizard; static `/demo`;
+`/funeral-home` placeholder). Remaining work is live rehearsal — see T7.3 in the task plan.
 
 ## Commands
 

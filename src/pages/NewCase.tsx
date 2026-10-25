@@ -76,10 +76,11 @@ export function NewCase() {
     // Don't block navigation on this -- the case + upload already succeeded,
     // and the case detail page has its own "resend invite" affordance (T1.7)
     // to mint one if it's missing.
-    await supabase.from('invite_tokens').insert({
+    const { error: inviteError } = await supabase.from('invite_tokens').insert({
       case_id: newCase.id,
       contact_email: familyEmail,
     })
+    if (inviteError) console.warn('Invite creation failed; use "Resend invite" on the case page.', inviteError.message)
 
     navigate(`/hospital/cases/${newCase.id}`)
   }
@@ -88,7 +89,7 @@ export function NewCase() {
     <HospitalLayout>
       <p className="eyebrow">New case</p>
       <h1>Start an intake</h1>
-      <p>Upload the hospital's intake document and we'll send the family an invite link.</p>
+      <p>Upload the hospital's intake document and we'll generate an invite link you can share with the family.</p>
 
       <form onSubmit={handleSubmit} className="card" style={{ maxWidth: 520 }}>
         <Field label="Family contact email (required)" htmlFor="nc-email">

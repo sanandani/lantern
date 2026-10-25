@@ -22,6 +22,7 @@ export function HospitalLogin() {
 
   if (loading) return <HospitalLayout><p className="center-note">Loading…</p></HospitalLayout>
   if (session && profile?.role === 'hospital') return <Navigate to="/hospital/dashboard" replace />
+  const notStaff = Boolean(session && profile && profile.role !== 'hospital')
 
   return (
     <HospitalLayout>
@@ -39,6 +40,11 @@ export function HospitalLogin() {
               <label htmlFor="hl-password">Password</label>
               <input id="hl-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
+            {notStaff && (
+              <p className="error-text" role="alert">
+                This browser is signed in with a family account. Use a private window to sign in as hospital staff.
+              </p>
+            )}
             {error && <p className="error-text" role="alert">{error}</p>}
             <button type="submit" className="btn btn-primary" disabled={submitting}>
               {submitting ? 'Signing in…' : 'Sign in'}

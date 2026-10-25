@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout'
 import { Field } from '../components/Field'
 import { startAnonymousFamilySession } from '../lib/auth'
 import { stashWizardDraft, type WizardDraft } from '../lib/familyOnboarding'
+import { todayLocal } from '../lib/dates'
 import type { DispositionPreference } from '../lib/types'
 
 const TOTAL_STEPS = 5
@@ -139,7 +140,7 @@ export function Wizard() {
               <input
                 id="w-dod"
                 type="date"
-                max={new Date().toISOString().slice(0, 10)}
+                max={todayLocal()}
                 value={form.dateOfDeath}
                 onChange={(e) => update('dateOfDeath', e.target.value)}
                 autoFocus

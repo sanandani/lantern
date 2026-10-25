@@ -227,14 +227,14 @@ themselves still hold.
   - The `swa-db-connections` path mismatch from the very first workflow run — already resolved; every run since has deployed successfully (verified via `gh run list`).
 - **Acceptance:** push to `main` deploys the frontend — verified, every run has succeeded. `npx supabase functions deploy` succeeded for both functions against the live project. Live `curl` smoke tests against each deployed function (not through the frontend) confirm the JWT boundary, request validation, and that the service-role client's DB/storage access actually works (see T1.4/T5.2's acceptance notes). The frontend calls both via `supabase.functions.invoke(...)` (`src/lib/triggerParseIntake.ts`/`triggerRecommend.ts`), which works the same in local dev and deployed — no separate "app settings not set yet" gap the way Azure Functions had, modulo the one `OPENROUTER_API_KEY` secret above. OpenRouter-backed parse and recommend calls both ran successfully against the deployed functions (see T1.4/T5.2). Remaining: a browser click-through of the full flow (T7.3).
 
-### T7.3 Demo rehearsal — 🚧 partial (runbook + fallback done; live rehearsal still blocked on T7.2's Azure settings)
+### T7.3 Demo rehearsal — 🚧 partial (runbook + fallback done; live browser click-through still pending)
 - **Deps:** T7.2
 - **Deliverables:**
   - `docs/demo-runbook.md` — step-by-step walkthrough matching spec's six-step demo script exactly, naming concrete URLs/fixtures/buttons at each step.
-  - No seeded hospital account — asked Harsh directly rather than guessing; decided it's unnecessary since login is magic-link only (first sign-in creates the account automatically, nothing to pre-seed).
+  - Hospital login is now email + password (demo accounts created in the Supabase dashboard); family sign-in is still magic-link.
   - Two sample PDFs: `01-hospital-medical-cert-wa.pdf` (clean parse) and `03-non-death-lab-report.pdf` (all-null graceful-degradation path) — reused from T1.4's fixtures rather than adding new ones. No scanned/blank PDF exists or is planned: OCR for scanned PDFs is explicitly out of scope for M1, so there's nothing that fixture would demonstrate.
   - Seeded funeral home data — already done, see T4.1 (277 rows).
-  - `src/pages/Demo.tsx` (`/demo`, built by the session doing T2/T3) — a fully static, no-backend walkthrough with canned sample data (`src/lib/demoData.ts`). Documented in the runbook as the fallback if the Azure app settings aren't set in time, or as a stall-safe mid-demo cut.
+  - `src/pages/Demo.tsx` (`/demo`, built by the session doing T2/T3) — a fully static, no-backend walkthrough with canned sample data (`src/lib/demoData.ts`). Documented in the runbook as the fallback if a live step fails, or as a stall-safe mid-demo cut.
 - **Acceptance:** runbook is ready to execute. **Not yet true:** a live browser click-through of the full demo script (magic-link sign-in and redeem round trip, wizard final insert) — the backend pieces it depends on are now verified, but those frontend round trips never have been.
 
 ---

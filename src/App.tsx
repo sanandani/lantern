@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { RequireRole } from './components/RequireRole'
 import { Home } from './pages/Home'
@@ -5,9 +6,6 @@ import { Wizard } from './pages/Wizard'
 import { InvitePage } from './pages/InvitePage'
 import { FamilyCase } from './pages/FamilyCase'
 import { HospitalLogin } from './pages/HospitalLogin'
-import { HospitalDashboard } from './pages/HospitalDashboard'
-import { NewCase } from './pages/NewCase'
-import { CaseDetail } from './pages/CaseDetail'
 import { Demo } from './pages/Demo'
 import { FuneralHomeLogin } from './pages/FuneralHomeLogin'
 import { FuneralHomeDashboard } from './pages/FuneralHomeDashboard'
@@ -15,9 +13,14 @@ import { FuneralHomeRequest } from './pages/FuneralHomeRequest'
 import { FuneralHomeCase } from './pages/FuneralHomeCase'
 import { DemoFuneralHome } from './pages/DemoFuneralHome'
 
+const HospitalDashboard = lazy(() => import('./pages/HospitalDashboard').then((m) => ({ default: m.HospitalDashboard })))
+const NewCase = lazy(() => import('./pages/NewCase').then((m) => ({ default: m.NewCase })))
+const CaseDetail = lazy(() => import('./pages/CaseDetail').then((m) => ({ default: m.CaseDetail })))
+
 function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<p className="center-note">Loading…</p>}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/start" element={<Wizard />} />
@@ -87,6 +90,7 @@ function App() {
 
         <Route path="*" element={<Home />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

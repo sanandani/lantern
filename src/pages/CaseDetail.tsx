@@ -24,6 +24,8 @@ export function CaseDetail() {
   const [error, setError] = useState('')
   const [resending, setResending] = useState(false)
   const [retryingParse, setRetryingParse] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [now] = useState(() => Date.now())
 
   const loadAll = useCallback(async () => {
     if (!id) return
@@ -115,7 +117,7 @@ export function CaseDetail() {
       </HospitalLayout>
     )
 
-  const inviteExpired = invite ? new Date(invite.expires_at) <= new Date() : false
+  const inviteExpired = invite ? new Date(invite.expires_at).getTime() <= now : false
   const inviteUsable = Boolean(invite && !invite.used_at && !inviteExpired)
   const inviteUrl = inviteUsable ? `${window.location.origin}/invite/${invite!.token}` : null
 
@@ -147,9 +149,25 @@ export function CaseDetail() {
         ) : (
           <p>{invite ? (invite.used_at ? 'Invite already used.' : 'Invite expired.') : 'No invite yet.'}</p>
         )}
+        <div className="btn-row">
+        {inviteUrl && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              navigator.clipboard?.writeText(inviteUrl).then(() => {
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+              })
+            }}
+          >
+            {copied ? 'Copied' : 'Copy link'}
+          </button>
+        )}
         <button type="button" className="btn btn-secondary" onClick={handleResend} disabled={resending}>
-          {resending ? 'Sending…' : 'Resend invite'}
+          {resending ? 'Creating…' : 'Generate new invite link'}
         </button>
+        </div>
       </div>
 
       <div className="card">
@@ -177,7 +195,7 @@ export function CaseDetail() {
                 .filter((entry): entry is [string, NonNullable<(typeof entry)[1]>] => entry[1] !== undefined)
                 .map(([key, field]) => (
                   <tr key={key}>
-                    <td>{key}</td>
+                    <td>{key.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())}</td>
                     <td>{field.value === null ? '—' : String(field.value)}</td>
                     <td>{typeof field.confidence === 'number' ? field.confidence.toFixed(2) : '—'}</td>
                   </tr>
