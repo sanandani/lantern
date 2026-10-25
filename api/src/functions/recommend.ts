@@ -97,8 +97,11 @@ export async function recommend(request: HttpRequest, context: InvocationContext
   return { status: 200, jsonBody: { recommendations } }
 }
 
+// anonymous, not function -- same reasoning as parse-intake: called directly
+// from the browser via Azure SWA's same-origin /api/* proxy, protected by the
+// case id being an unguessable UUID rather than a bundled function key.
 app.http('recommend', {
   methods: ['POST'],
-  authLevel: 'function',
+  authLevel: 'anonymous',
   handler: recommend,
 })

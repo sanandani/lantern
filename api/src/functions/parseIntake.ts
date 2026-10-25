@@ -52,8 +52,13 @@ export async function parseIntake(request: HttpRequest, context: InvocationConte
   return { status: 200, jsonBody: { parsedFields } }
 }
 
+// anonymous, not function: called directly from the browser via Azure Static
+// Web Apps' same-origin /api/* proxy for managed Functions. A function key
+// would have to be bundled into client JS to call it otherwise, which leaks
+// the key. Case ids are unguessable UUIDs, same security boundary invite_tokens
+// already relies on -- there's no separate authz check here beyond that.
 app.http('parse-intake', {
   methods: ['POST'],
-  authLevel: 'function',
+  authLevel: 'anonymous',
   handler: parseIntake,
 })

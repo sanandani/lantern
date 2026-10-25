@@ -54,6 +54,12 @@ Hosted on Azure Static Web Apps, auto-deployed from `main`.
    the Supabase dashboard, and not by asking another agent session, which won't have
    them either. Leave both blank in `.env` for frontend-only work.
 
+   Separately, the hosted project's Auth email now goes through a custom Resend SMTP
+   relay (`supabase/config.toml`'s `[auth.email.smtp]`, applied via `supabase config
+   push`) instead of Supabase's default mailer, whose shared quota is a few emails/hour —
+   too low for even light magic-link testing. This is already configured on the project;
+   you don't need a Resend key unless you're rotating it — see `CLAUDE.md` for that.
+
 3. **Link the Supabase project and apply migrations**
    ```
    npx supabase login
@@ -93,6 +99,32 @@ build step — see the `env:` block under "Build And Deploy" in the workflow fil
 deployed site loads but renders blank, check that those two variables are still set and
 still correct; a missing/stale value throws in `src/lib/supabase.ts` before anything
 renders, with the deploy itself still reporting success.
+
+### Azure Functions (`api/`)
+
+The workflow's `api_location: "api"` tells Azure Static Web Apps to build and deploy
+`api/` as managed Functions alongside the static site — no separate Function App
+resource needed. Those functions need their own secrets, which **only exist in Azure**
+(never in this repo or in GitHub), set once via the Azure Portal → your Static Web App →
+*Settings → Environment variables* (or `az staticwebapp appsettings set`):
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `OPENROUTER_API_KEY`
+
+Without these set, `parse-intake` and `recommend` will deploy but every invocation will
+throw (`supabaseAdmin()`/`parsePdfToCaseFields()` both throw immediately on a missing env
+var — see `api/src/lib/supabaseAdmin.ts` and `api/src/lib/parsePdfToCase.ts`).
+
+Both functions use `authLevel: 'anonymous'` and are called directly from the browser via
+Azure SWA's same-origin `/api/*` proxy for managed Functions (`src/lib/triggerParseIntake.ts`,
+`src/lib/triggerRecommend.ts`) — not `authLevel: 'function'`, which would require bundling
+a function key into client JS and leaking it. The security boundary is the same one
+`invite_tokens` already relies on: case ids are unguessable UUIDs, not enumerable, and
+there's no separate authz check beyond that. In local dev (`npm run dev`, no Functions
+runtime), these calls just 404 and get swallowed — fine, since there's nothing to parse
+or recommend against without a real upload/activation anyway. They only actually run
+against the deployed site once the three app settings above are set.
 
 ## Project layout
 

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { HospitalLayout } from '../components/HospitalLayout'
 import { Field } from '../components/Field'
+import { triggerParseIntake } from '../lib/triggerParseIntake'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
@@ -61,15 +62,16 @@ export function NewCase() {
       return
     }
 
-    const { error: uploadError } = await supabase.storage
-      .from('intake-documents')
-      .upload(`${newCase.id}/${file.name}`, file)
+    const storagePath = `${newCase.id}/${file.name}`
+    const { error: uploadError } = await supabase.storage.from('intake-documents').upload(storagePath, file)
 
     if (uploadError) {
       setSubmitError(uploadError.message)
       setSubmitting(false)
       return
     }
+
+    triggerParseIntake(newCase.id, storagePath)
 
     // Don't block navigation on this -- the case + upload already succeeded,
     // and the case detail page has its own "resend invite" affordance (T1.7)

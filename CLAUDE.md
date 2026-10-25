@@ -51,6 +51,16 @@ Azure Functions-only, never in client code, never committed anywhere (not even i
 file). If you need one and don't have it, ask Harsh directly — not another agent session,
 which won't have it either — rather than guessing or stubbing a value.
 
+`RESEND_API_KEY` is also a genuine secret, but used differently: it's only needed
+transiently, as a local env var, to run `npx supabase config push` (which applies
+`supabase/config.toml`'s `[auth.email.smtp]` block to the hosted project's Auth email
+settings — custom SMTP via Resend, replacing Supabase's default built-in mailer whose
+shared quota is capped at a few emails/hour and was blocking magic-link testing). Supabase
+stores the key itself once pushed; it's never read by the app at runtime and doesn't belong
+in `.env`. If it's rotated or lost, get a fresh one from Resend's dashboard → API Keys and
+re-run `RESEND_API_KEY=<key> npx supabase config push` — ask Harsh for a key rather than
+creating a new Resend account.
+
 Apply schema changes with `npx supabase db push` after linking the project
 (`npx supabase link --project-ref sfsycncjxglfiqidhvtf`).
 

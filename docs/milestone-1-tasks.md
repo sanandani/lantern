@@ -98,11 +98,11 @@ themselves still hold.
   - Also inserts `invite_tokens` (`contact_email` pinned, `token`/`expires_at` default server-side per T0.2) right after the upload succeeds, then navigates to the new `/hospital/cases/:id` page (T1.6) rather than back to the dashboard.
   - **New migration** `20261025030000_invite_tokens_hospital_select.sql` — the original schema had no SELECT policy on `invite_tokens` at all (by design, to block token enumeration), which meant there was no way for the hospital to read back the token it just minted. Added a case-ownership-scoped SELECT policy (same non-enumerable pattern as `intake_documents`/`recommendations`) — applied live via `supabase db push`.
   - **Email send descoped for M1**: per spec.md's own demo script ("Invite link is generated — can just be shown on screen for the demo instead of actually sending"), this doesn't call Resend/Supabase email — the link is just displayed on the case detail page (T1.6). Revisit if a real email provider gets picked (still an open item).
-- **Acceptance:** verified live — case + upload + invite token all create correctly when the PDF fixture parses cleanly; the no-usable-fields path isn't independently re-tested here since it's the same insert path exercised regardless of what `parse-intake` (not yet wired in as a trigger from this page — see T1.4) eventually writes.
+- **Acceptance:** verified live — case + upload + invite token all create correctly when the PDF fixture parses cleanly. `NewCase.tsx` now calls `triggerParseIntake(caseId, storagePath)` right after the upload succeeds (same-origin `/api/parse-intake`, see T7.2) — not independently re-tested against a live `intake_documents` row here since that needs the deployed Function + Azure app settings, not just this page's own insert path.
 
 ### T1.6 Parsed-field review view (hospital/debug) — ✅ done
 - **Deps:** T1.4
-- **Deliverables:** `src/pages/CaseDetail.tsx` (`/hospital/cases/:id`) — shows the decedent name/status, the invite link (or why it's unusable: used/expired/none yet), and a table of parsed fields + confidence from the latest `intake_documents` row if one exists ("PDF not parsed yet" otherwise, since `parse-intake` isn't triggered from the upload flow yet — see T1.4's note on Azure deployment being the remaining gap).
+- **Deliverables:** `src/pages/CaseDetail.tsx` (`/hospital/cases/:id`) — shows the decedent name/status, the invite link (or why it's unusable: used/expired/none yet), and a table of parsed fields + confidence from the latest `intake_documents` row if one exists ("PDF not parsed yet" otherwise). `parse-intake` is now triggered from the upload flow (T1.5/T7.2); this page just hasn't been re-tested against a live row produced that way yet (needs the deployed Function + Azure app settings).
 - **Acceptance:** matches the demo script step 2 and 3 in `spec.md` for the invite-link part; parsed-field display verified against the schema shape T1.4 actually produces (not yet against a live `intake_documents` row, since nothing writes one outside the standalone test script until `parse-intake` is deployed and wired as a trigger).
 
 ### T1.7 Resend invite — ✅ done
@@ -188,13 +188,13 @@ themselves still hold.
   - `api/scripts/test-rank-candidates.ts` (`npm run test:rank-candidates` from `api/`) — live OpenRouter test with synthetic candidates (no Supabase needed).
 - **Acceptance:** type-checks clean. Live-tested against the real OpenRouter API: returns 3–5 ranked items for a 4-candidate sample set, every pick is a real candidate id (schema-enforced, not just prompted), ranks are gapless 1..N, every rationale is non-empty and didn't reference the one candidate's null `rating` field, and an empty candidate list short-circuits to `[]` without an API call. The idempotency guard and the `cases.status` write are exercised by code path (would need a live Supabase case row + deployed function to click-test end-to-end — same Azure-deployment gap as T1.4, see T7.2).
 
-### T5.3 Trigger on activation — ✅ done (wiring complete; real call still blocked on deploy)
+### T5.3 Trigger on activation — ✅ done
 - **Deps:** T5.2, T2.3, T3.2
 - **Deliverables:**
-  - `src/lib/triggerRecommend.ts` — fire-and-forget POST to the `recommend` function, called from both places `cases.status` becomes `active`: `FamilyCase.tsx`'s self-serve case insert and `ConfirmationScreen`'s confirm handler.
-  - **No-op until `VITE_RECOMMEND_FUNCTION_URL` is set** — there's no deployed Azure Functions endpoint in this dev environment, same gap T1.4 already has for `parse-intake`. Deliberately doesn't support a function key via a `VITE_` var either: that would bundle the secret into the client JS. `recommend`'s `authLevel: 'function'` needs reconsidering (anonymous + its own validation, or moving the call server-side) before this goes live — flagged for T7.2, not solved here.
+  - `src/lib/triggerRecommend.ts` — fire-and-forget POST to same-origin `/api/recommend`, called from both places `cases.status` becomes `active`: `FamilyCase.tsx`'s self-serve case insert and `ConfirmationScreen`'s confirm handler.
+  - `recommend`'s `authLevel` moved to `anonymous` (see T7.2) so the browser can call it directly through Azure SWA's managed-Functions proxy without a function key ever reaching client JS.
   - Duplicate-run safety doesn't depend on the frontend calling this exactly once: T5.2's `recommend` function checks for existing `recommendations` rows first and returns them as-is rather than re-ranking, so even a retried/duplicate call is a no-op.
-- **Acceptance:** both call sites type-check/build/lint clean (verified via `npx tsc -b`, `npm run lint`, `npm run build` across the whole repo). "Exactly one recommendation run per activation; re-confirming does not duplicate rows" is satisfied by construction (the idempotency guard in T5.2, not by assuming the frontend never double-fires) rather than click-tested, since there's no deployed function to call yet.
+- **Acceptance:** both call sites type-check/build/lint clean (verified via `npx tsc -b`, `npm run lint`, `npm run build` across the whole repo). "Exactly one recommendation run per activation; re-confirming does not duplicate rows" is satisfied by construction (the idempotency guard in T5.2, not by assuming the frontend never double-fires). Not yet click-tested against the deployed site — needs the Azure app settings from T7.2 set first.
 
 ---
 
@@ -214,13 +214,13 @@ themselves still hold.
 - **Deliverables:** user-facing error messages for upload, parse failure, expired token, and recommendation failure. Loading states on every async action.
 - **Acceptance:** each failure path shows a message, no blank screens.
 
-### T7.2 Azure Static Web Apps deployment
+### T7.2 Azure Static Web Apps deployment — 🚧 partial (site deploys; Functions wiring incomplete)
 - **Deps:** T0.1 (and Functions from T1.4, T5.2)
 - **Deliverables:**
-  - `.github/workflows/` workflow — already exists (`app_location: "/"`, `output_location: "build"`, matching `vite.config.ts`'s `build.outDir`); still needs `api_location` set to the functions folder once T1.4/T5.2 exist.
-  - App settings in Azure: Supabase URL/key (public), OpenRouter key (secret), email provider key.
-  - Resolve the `swa-db-connections` path mismatch from the failed run first.
-- **Acceptance:** push to `main` deploys; the deployed site loads and the invite and wizard flows work against Supabase.
+  - `.github/workflows/azure-static-web-apps-*.yml` — `app_location: "/"`, `output_location: "build"` (matches `vite.config.ts`'s `build.outDir`). `api_location` set to `"api"` now that T1.4/T5.2 exist, so Azure SWA builds/deploys `api/` as managed Functions alongside the static site (no separate Function App resource).
+  - The `swa-db-connections` path mismatch from the very first workflow run — already resolved by the time T1.4/T5.2 landed; every run since has deployed successfully (verified via `gh run list`). Nothing left to do here.
+  - App settings in Azure for `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`OPENROUTER_API_KEY` — documented in README's new "Azure Functions (`api/`)" section, but **not yet set** (needs the Azure Portal or `az` CLI, neither of which this environment has credentials for — this is a Harsh-only step). Email provider setting dropped: T1.5 already descoped the email send for M1.
+- **Acceptance:** push to `main` deploys — verified, every run since `773ba06` has succeeded, including the one carrying this milestone's full feature set (`252ed2e`). Site loads and the invite/wizard flows work against Supabase (per T1.1/T2.1/T3.2's live verification). Both functions switched from `authLevel: 'function'` to `anonymous` and are called from the frontend via the same-origin `/api/*` path Azure SWA's managed-Functions integration provides (`NewCase.tsx` → `/api/parse-intake`, `FamilyCase.tsx` → `/api/recommend`) — no function key needed or leaked client-side; the security boundary is the same unguessable-UUID one `invite_tokens` already relies on. **Still not yet true:** the Functions actually running end-to-end on the deployed site, since the three app settings above (`SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`OPENROUTER_API_KEY`) aren't set in Azure yet — that step needs the Azure Portal or `az` CLI, neither available in this dev environment. This is the one remaining blocker before a real end-to-end click-test; everything else in this task is done.
 
 ### T7.3 Demo rehearsal
 - **Deps:** T7.2
