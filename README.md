@@ -32,19 +32,32 @@ recommendation ranking. Hosted on Azure Static Web Apps, auto-deployed from `mai
    ```
    cp .env.example .env
    ```
-   Fill in from the Supabase dashboard (Project Settings → API):
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_PUBLISHABLE_KEY` — the publishable/anon key, safe to expose client-side
-     (RLS does the gating)
+   `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are **not secrets** — the
+   publishable key is designed to ship inside the client bundle (RLS does the actual
+   access control), and the URL is public by definition. So the project's current values
+   are just written here rather than making every teammate (or agent) hunt for them or
+   ask someone else's session:
+   ```
+   VITE_SUPABASE_URL=https://sfsycncjxglfiqidhvtf.supabase.co
+   VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_RMdKeDYAhp6mOtPgzTIUWA_CdaRgpPu
+   ```
+   If these ever stop working (key rotated, new project), get current values from the
+   Supabase dashboard → the project → **Project Settings → API Keys** (Supabase renamed
+   this page from the old "API" settings; "anon key" is now labeled "publishable key"
+   there).
 
-   The `SUPABASE_SERVICE_ROLE_KEY` and `ANTHROPIC_API_KEY` entries are only used by the
-   Azure Functions (not yet built) and must never be put in client code — leave them blank
-   for frontend-only work.
+   The `SUPABASE_SERVICE_ROLE_KEY` and `ANTHROPIC_API_KEY` entries are the opposite —
+   **genuine secrets**, used only by the Azure Functions (not yet built), never put in
+   client code, and never committed here even as a placeholder value. Get those from
+   whoever holds them (Harsh) or from the Azure Function App's own settings once the
+   Functions exist — not from the Supabase dashboard, and not by asking another agent
+   session, which won't have them either. Leave both blank in `.env` for frontend-only
+   work.
 
 3. **Link the Supabase project and apply migrations**
    ```
    npx supabase login
-   npx supabase link --project-ref <project-ref>   # from the Supabase dashboard URL
+   npx supabase link --project-ref sfsycncjxglfiqidhvtf
    npx supabase db push
    ```
    This applies everything in `supabase/migrations/`: the `cases`/`intake_documents`/
