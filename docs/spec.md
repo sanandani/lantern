@@ -39,11 +39,17 @@ a lightweight structured answer set because there's no document to parse.
   couple of seeded hospital accounts, no real hospital integration/SSO.
 - **Case** — one deceased person + intake context, regardless of which path produced it.
   Fields:
-  - Decedent: name, date of birth, date/place of death, hospital/facility name
-    (cause of death intentionally excluded — see Resolved questions)
+  - Decedent: legal name (first, middle, last), sex, date of birth, age at death,
+    date of death, time of death (optional), place of death (facility name, facility
+    city/state/zip), residence (street, city, state, zip, county). Cause of death,
+    manner of death, and SSN are intentionally excluded — see Resolved questions.
+  - Place of death type: `inpatient` | `emergency` | `dead_on_arrival` | `hospice` |
+    `nursing_home` | `decedent_home` | `other` (self-serve: asked only if needed — defaults
+    to `unknown`, see Open questions)
   - Disposition preference: burial or cremation, or unsure
   - Family contact: name, email (required — this is the only contact channel; it's used
-    for the invite/magic link and for auth)
+    for the invite/magic link and for auth), relationship to decedent (e.g. spouse, son,
+    daughter, other)
   - Location (zip/county) — drives which funeral homes are eligible
   - `source`: `hospital` | `self_serve`
   - `status`: `pending_review` | `active` | `recommendations_ready`
@@ -79,7 +85,15 @@ a lightweight structured answer set because there's no document to parse.
 - Hospital enters the family contact's email (required).
 - System runs one LLM parse call over the PDF text to extract the Case fields above, each
   tagged with a confidence score; low-confidence fields are left blank rather than
-  guessed. If the parse returns no usable fields at all, the Case is still created with
+  guessed. Parse targets for Milestone 1 (from the hospital medical certification form):
+  - Decedent: legal name, sex, date of birth, age at death, date of death, time of
+    death, facility name, ward (stored, not shown to family), county of death if printed
+  - Residence: street, city, state, zip, county, if printed
+  - Relative/certificate block: "S/W/D of" (parent/spouse named on the certificate),
+    date admitted, date expired
+  - Not extracted: cause of death (all Part I/Part II entries), manner of death, pregnancy
+    fields, certifying physician name and license number. The parser must not return
+    these keys even at low confidence. If the parse returns no usable fields at all, the Case is still created with
   everything blank — the family's confirmation screen in Flow 2 becomes the place those
   fields get filled in from scratch, rather than the upload failing outright.
 - System creates the Case (`source=hospital`, `status=pending_review`) + an InviteToken
@@ -102,10 +116,16 @@ a lightweight structured answer set because there's no document to parse.
 
 ### 3. Family self-serve (no hospital)
 - Family signs up directly from the homepage (no token, no PDF).
-- They answer a short, three-question wizard instead of a long form:
-  1. Location (zip code)
-  2. Burial, cremation, or not sure
-  3. Email (required — this is also how they sign in, via magic link; no password)
+- They answer a short wizard instead of a long form. The Case cannot exist without the
+  decedent and the family contact, so the wizard asks:
+  1. Decedent legal name (first, last; middle optional)
+  2. Date of death
+  3. Location (zip code)
+  4. Burial, cremation, or not sure
+  5. Family contact name and relationship to decedent
+  6. Email (required — this is also how they sign in, via magic link; no password)
+- Not asked in M1 (left blank, filled later on the funeral home worksheet): sex, age,
+  residence street, place of death type, facility. See "Template field gaps" below.
 - Case is created with `source=self_serve`, `status=active` immediately (no review step,
   since there's no parsed document to double-check).
 
@@ -163,7 +183,7 @@ a lightweight structured answer set because there's no document to parse.
    locked to what the hospital entered, see the hospital-provided context pre-filled on a
    confirmation screen, confirm it.
 5. See a ranked list of 3–5 recommended funeral homes with rationale.
-6. Separately, demo the self-serve path: sign up with no invite, answer the 3-question
+6. Separately, demo the self-serve path: sign up with no invite, answer the 6-question
    wizard, get the same kind of recommendation list.
 
 ## Explicitly out of scope for Milestone 1
@@ -184,7 +204,63 @@ a lightweight structured answer set because there's no document to parse.
   the recommendation screen may come back empty in that case; no fallback/widening logic
   for Milestone 1.
 
+## Template field gaps (from the hospital and funeral home forms)
+Source forms: the hospital's medical certification of cause of death (`fixtures/sample-pdfs/01-hospital-medical-cert-wa.pdf`) and the Washington State Death Certificate Worksheet (`Context/` image, filled by the funeral home). Each field is marked:
+- **M1** — in the Case schema and used in M1 flows.
+- **M2** — needed to fill the funeral home worksheet; out of M1 scope but must not be designed out.
+- **Never** — not collected by the app.
+
+| Field (form) | Where it comes from | Status |
+|---|---|---|
+| Legal name (WS 1) | Hospital PDF / self-serve wizard | M1 |
+| Sex (MED, WS 3) | Hospital PDF | M1 (parsed); self-serve M2 |
+| Age at death (MED, WS 4a) | Hospital PDF (derived from DOB if absent) | M1 |
+| Date of death (MED, WS 2) | Hospital PDF / self-serve wizard | M1 |
+| Time of death (MED) | Hospital PDF | M1 (optional) |
+| Ward (MED) | Hospital PDF | M1 (stored only) |
+| Facility name (MED, WS 25) | Hospital PDF | M1 |
+| Facility city/state/zip (WS 26–27) | Hospital PDF or zip lookup | M1 (city/state); zip M2 |
+| Place of death type (WS 24) | Hospital PDF (inpatient implied) | M1 field, default `unknown` for self-serve |
+| Residence street, city, zip, county (WS 13a–13c, 13f) | Hospital PDF; self-serve only zip | M1 (hospital); self-serve county from zip, street M2 |
+| Date of birth (WS 7) | Hospital PDF / not asked in self-serve wizard | M1 (hospital); self-serve M2 |
+| Birthplace city/state (WS 8a–8b) | Not in hospital form | M2 |
+| Marital status, surviving spouse (WS 15–16) | Not in hospital form | M2 |
+| Armed forces, education, Hispanic origin, race (WS 9–12) | Not in any source | M2 — ask family only, never inferred |
+| Occupation, business (WS 17–18) | Not in any source | M2 |
+| Parents' names (WS 19–20) | Not in any source | M2 |
+| Informant name, relationship (WS 21–22) | Family contact in Case | M1 (contact name, relationship) |
+| Informant mailing address (WS 23) | Not collected | M2 |
+| Informant phone (WS bottom) | Conflicts with "email only" | Open question — see below |
+| Informant email (WS bottom) | Family email in Case | M1 |
+| Disposition method (WS 28) | Wizard: burial / cremation / unsure | M1 (3 options); M2 needs the full list: donation, entombment, removal from state, body not recovered, other |
+| Place of disposition, location (WS 29–30) | Selected funeral home | M2 — depends on the chosen funeral home, which M1 does not record |
+| Date of disposition (WS 32) | Funeral home | M2 |
+| Funeral facility (WS 31) | Selected funeral home, pre-printed on the form | M2 — requires a "selected funeral home" concept that M1 does not have |
+| Social Security Number (WS 5) | — | Never |
+| Cause of death, manner of death, pregnancy (MED) | Hospital PDF | Never extracted (see Resolved questions) |
+| Certifying physician name/license (MED) | Hospital PDF | Never extracted |
+
+Notes:
+- The hospital form and the worksheet both use the decedent's full legal name, so the
+  M1 name field must hold first/middle/last separately, not one free-text string.
+- A funeral home is not chosen in M1, so the worksheet's funeral-facility and disposition
+  place fields have no source. M2 needs a "selected funeral home" step after
+  recommendations.
+
 ## Resolved questions
+- **Informant phone:** M1 stays email-only, so the worksheet's phone field is left blank.
+  Whether to add phone for the funeral home is deferred to the start of M2.
+- **Self-serve place of death:** not asked in the wizard; the Case stores `unknown`.
+- **Ward:** stored on the Case, never shown to the family.
+- **Age at death:** taken from the PDF when printed; otherwise derived from date of birth
+  and date of death.
+- **Funeral home selection:** M1 does not record a chosen funeral home. M2 adds a
+  "selected funeral home" step after recommendations, which fills the worksheet's
+  funeral-facility and disposition-place fields.
+- **Self-serve wizard length:** six questions (decedent name, date of death, zip,
+  disposition, family contact name and relationship, email). Confirmed by the product
+  owner, replacing the earlier three-question version, because the Case cannot exist
+  without the decedent and the family contact.
 - **Cause of death:** excluded from the Case schema — not needed for funeral home
   matching, and sensitive. If present in a hospital PDF, the parser should ignore it
   rather than extract it.
