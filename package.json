@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "load-funeral-homes": "tsx scripts/load-funeral-homes.ts",
     "test": "tsx scripts/test-filter-candidates.ts",
-    "test:rls": "tsx scripts/test-rls.ts"
+    "test:rls": "tsx scripts/test-rls.ts",
+    "demo:link": "tsx scripts/demo-login-link.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
