@@ -4,6 +4,12 @@ Covers the six-step demo script from `docs/spec.md`'s "Milestone 1 — demo scri
 section. Hospital staff sign in at `/hospital/login` with an email + password (demo accounts are
 created in the Supabase dashboard; family sign-in still uses magic links).
 
+**Demo hospital login:** `demo.hospital@agenticlantern.test` / `Lantern-Demo-2026!` — also
+shown directly on the `/hospital/login` page itself so judges can log in without asking. Not
+a secret (it's displayed on a public page by design); if it ever needs rotating, set a new
+password via the Supabase dashboard → Authentication → Users, then update both this file and
+`src/pages/HospitalLogin.tsx`'s demo-credentials box.
+
 ## Before the demo
 
 - `OPENROUTER_API_KEY` is already set as a Supabase secret (verify with `npx supabase

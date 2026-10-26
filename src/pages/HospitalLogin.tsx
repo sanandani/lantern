@@ -31,6 +31,11 @@ export function HospitalLogin() {
         <p className="eyebrow">Hospital Portal</p>
         <h1>Sign in</h1>
         <p>Sign in with your hospital staff account.</p>
+        <div className="card" style={{ background: 'var(--primary-soft)', border: '1px solid var(--border)', marginBottom: '1rem' }}>
+          <p style={{ margin: 0, fontWeight: 600 }}>Demo credentials</p>
+          <p style={{ margin: '0.25rem 0 0' }}>Email: <code>demo.hospital@agenticlantern.test</code></p>
+          <p style={{ margin: '0.25rem 0 0' }}>Password: <code>Lantern-Demo-2026!</code></p>
+        </div>
         <div className="card">
           <form onSubmit={handleSubmit}>
             <div className="field">
